@@ -29,7 +29,7 @@ interface DocumentFoldersProps {
 const folderContainerVar = {
     idle: { y: 0 },
     hover: { y: -8, transition: { type: 'spring', stiffness: 300, damping: 20 } }
-}
+} as const
 
 const frontFlapVar = {
     idle: { rotateX: 0 },
@@ -37,7 +37,7 @@ const frontFlapVar = {
         rotateX: -15,
         transition: { type: 'spring', stiffness: 350, damping: 25 }
     }
-}
+} as const
 
 const paper1Var = {
     idle: { y: 4, x: -10, rotate: -4 },
@@ -45,7 +45,7 @@ const paper1Var = {
         y: -4, x: -12, rotate: -6,
         transition: { type: 'spring', stiffness: 350, damping: 25 }
     }
-}
+} as const
 
 const paper2Var = {
     idle: { y: 2, x: 5, rotate: 2 },
@@ -53,7 +53,7 @@ const paper2Var = {
         y: -10, x: 8, rotate: 5,
         transition: { type: 'spring', stiffness: 350, damping: 25 }
     }
-}
+} as const
 
 export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, getItemCount, onDeleteFolder, onRenameFolder }: DocumentFoldersProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
