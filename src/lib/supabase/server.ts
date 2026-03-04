@@ -9,7 +9,7 @@ export async function createClient() {
 
   if (!url || !anonKey) {
     return createServerClient(
-      'https://placeholder.supabase.co',
+      'https://xyz.supabase.co',
       'placeholder',
       { cookies: { getAll: () => [], setAll: () => { } } }
     )

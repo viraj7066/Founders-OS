@@ -7,7 +7,7 @@ export function createClient() {
     // Fallback for build time static generation
     if (!url || !anonKey) {
         return createBrowserClient(
-            'https://placeholder.supabase.co',
+            'https://xyz.supabase.co',
             'placeholder'
         )
     }
