@@ -1,15 +1,10 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { TeamDashboard } from '@/components/team/team-dashboard'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
 export default async function TeamPage() {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { cookies: { get(name: string) { return cookieStore.get(name)?.value } } }
-    )
+    const supabase = await createClient()
 
     const userId = '00000000-0000-0000-0000-000000000000'
 

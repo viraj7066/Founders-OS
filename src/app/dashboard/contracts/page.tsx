@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
+export const dynamic = 'force-dynamic'
 export default function ContractsPage() {
     const supabase = createClient()
     const userId = '00000000-0000-0000-0000-000000000000'

@@ -6,6 +6,7 @@ export const metadata = {
     description: 'Manage your account settings, agency information, and preferences.',
 }
 
+export const dynamic = 'force-dynamic'
 export default async function SettingsPage() {
     let userProfile: any = {}
 
