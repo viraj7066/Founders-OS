@@ -27,16 +27,27 @@ export default function LoginForm() {
         }
 
         try {
+            console.log('Attempting Supabase login...');
             const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+
             if (signInError) {
-                setError(signInError.message)
+                let msg = signInError.message
+                if (msg.toLowerCase().includes('fetch')) {
+                    msg = `Network Error: Failed to reach your database. Please double-check that your NEXT_PUBLIC_SUPABASE_URL in Vercel is exactly right (including https://) and that your Supabase project isn't paused.`
+                }
+                setError(msg)
                 setIsLoading(false)
                 return
             }
             router.push('/dashboard')
             router.refresh()
         } catch (err: any) {
-            setError(`Connection Error: ${err.message || 'Unknown error'}`)
+            let msg = err.message || 'Unknown error'
+            if (msg.toLowerCase().includes('fetch')) {
+                msg = `Network Error: Failed to reach your database. Please confirm your Supabase URL in Vercel and check your internet connection.`
+            }
+            console.error('Login error detail:', err);
+            setError(`Connection Error: ${msg}`)
             setIsLoading(false)
         }
     }
