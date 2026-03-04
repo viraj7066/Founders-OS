@@ -7,8 +7,12 @@ export const dynamic = 'force-dynamic'
 export default async function VaultPage() {
     const supabase = await createClient()
 
-    // For local dev, bypass auth and use dummy user
-    const userId = '00000000-0000-0000-0000-000000000000'
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
+    if (!userId) {
+        redirect('/login')
+    }
 
     const { data: prompts } = await supabase
         .from('ai_prompts')

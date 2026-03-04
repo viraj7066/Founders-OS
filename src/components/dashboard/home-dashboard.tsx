@@ -10,8 +10,9 @@ import {
     CalendarDays, FolderOpen, Users, TrendingUp, AlertTriangle,
     ArrowRight, Sparkles, Activity, CheckCircle2, Clock,
     Plus, Trash2, Target, CircleDollarSign, Eye, Star,
-    Zap, BarChart3, Bell, ArrowUpRight
+    Zap, BarChart3, Bell, ArrowUpRight, Rocket
 } from 'lucide-react'
+import { LifeGoals } from './life-goals'
 import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { toast } from 'sonner'
@@ -64,13 +65,20 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
         const fetchEarnings = async () => {
             const { data: invoices } = await supabase
                 .from('invoices')
-                .select('amount, status')
-                .eq('status', 'Paid')
+                .select('amount, status, advance_received, advance_amount')
+
             if (invoices && invoices.length > 0) {
-                const paid = invoices.reduce((s: number, inv: any) => s + (inv.amount || 0), 0)
+                const paid = invoices.reduce((s: number, inv: any) => {
+                    let amountToAdd = 0
+                    if (inv.status === 'Paid') {
+                        amountToAdd = inv.amount || 0
+                    } else if (inv.advance_received) {
+                        amountToAdd = inv.advance_amount || 0
+                    }
+                    return s + amountToAdd
+                }, 0)
                 setTotalEarnings(paid)
             } else {
-                // Fall back to MRR from active clients
                 setTotalEarnings(totalMRR)
             }
         }
@@ -235,7 +243,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
             )}
 
             {/* ─── BENTO GRID ROW 1: Hero + Primary KPIs ─── */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
                 {/* Main Hero Card (Spans 2 cols) */}
                 <div className="lg:col-span-2 relative overflow-hidden rounded-3xl border border-white/8 bg-card p-6 sm:p-8 flex flex-col justify-between group">
@@ -331,6 +339,49 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                         </ResponsiveContainer>
                     </div>
                 </Link>
+
+                {/* Month Progress Visualizer */}
+                {(() => {
+                    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+                    const dayOfMonth = now.getDate()
+                    const daysLeft = daysInMonth - dayOfMonth
+                    const daysPassed = dayOfMonth - 1
+                    const pct = Math.round((dayOfMonth / daysInMonth) * 100)
+                    const motivationalLines = [
+                        `${daysPassed} days already spent — ${daysLeft} still yours to dominate.`,
+                        `${pct}% of this month is ash. Make the remaining ${100 - pct}% count.`,
+                        `${daysLeft} days of untapped potential. Every one = a deal you could close.`,
+                        `${daysPassed} days archived. The next ${daysLeft} are where legends are written.`,
+                        `Final stretch. ${daysLeft} days left — go earn something worth remembering.`,
+                    ]
+                    const line = motivationalLines[Math.min(Math.floor((dayOfMonth / daysInMonth) * motivationalLines.length), motivationalLines.length - 1)]
+
+                    return (
+                        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-card flex flex-col justify-between group h-full lg:col-span-1">
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/5 blur-[60px] rounded-full group-hover:bg-orange-500/10 transition-colors" />
+                            <div className="p-5 border-b border-white/5 bg-secondary/20 relative z-10 shadow-inner">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <Clock className="w-3.5 h-3.5 text-orange-500" />
+                                    <h3 className="text-xs font-bold text-foreground">Progress</h3>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground font-medium tracking-wide uppercase">{daysLeft} Days Left</p>
+                            </div>
+
+                            <div className="flex-1 p-5 flex flex-col justify-center relative z-10 bg-card">
+                                <p className="text-3xl font-black tracking-tighter text-foreground text-center mb-0.5">{pct}%</p>
+                                <p className="text-[9px] text-orange-500/80 font-bold tracking-widest uppercase text-center mb-4">Elapsed</p>
+
+                                <div className="relative h-1.5 w-full bg-secondary rounded-full overflow-hidden mb-4">
+                                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-700 via-orange-500 to-amber-300 rounded-full" style={{ width: `${pct}%`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground/80 font-medium italic text-center leading-tight">
+                                    "{line}"
+                                </p>
+                            </div>
+                        </div>
+                    )
+                })()}
             </div>
 
             {/* ─── MODULES DOCK ROW ─── */}
@@ -412,50 +463,10 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                     </div>
                 </div>
 
-                {/* Month Progress Visualizer */}
-                {(() => {
-                    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-                    const dayOfMonth = now.getDate()
-                    const daysLeft = daysInMonth - dayOfMonth
-                    const daysPassed = dayOfMonth - 1
-                    const pct = Math.round((dayOfMonth / daysInMonth) * 100)
-                    const motivationalLines = [
-                        `${daysPassed} days already spent — ${daysLeft} still yours to dominate.`,
-                        `${pct}% of this month is ash. Make the remaining ${100 - pct}% count.`,
-                        `${daysLeft} days of untapped potential. Every one = a deal you could close.`,
-                        `${daysPassed} days archived. The next ${daysLeft} are where legends are written.`,
-                        `Final stretch. ${daysLeft} days left — go earn something worth remembering.`,
-                    ]
-                    const line = motivationalLines[Math.min(Math.floor((dayOfMonth / daysInMonth) * motivationalLines.length), motivationalLines.length - 1)]
-
-                    return (
-                        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-card flex flex-col justify-between group h-full">
-                            <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/5 blur-[60px] rounded-full group-hover:bg-orange-500/10 transition-colors" />
-                            <div className="p-6 border-b border-white/5 bg-secondary/20 relative z-10 shadow-inner">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Clock className="w-4 h-4 text-orange-500" />
-                                    <h3 className="text-sm font-bold text-foreground">Month Progress</h3>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground font-medium tracking-wide uppercase">{format(now, 'MMMM yyyy')} · {daysLeft} Days Left</p>
-                            </div>
-
-                            <div className="flex-1 p-6 flex flex-col justify-center relative z-10 bg-card">
-                                <p className="text-4xl sm:text-5xl font-black tracking-tighter text-foreground text-center mb-1">{pct}%</p>
-                                <p className="text-[10px] text-orange-500/80 font-bold tracking-widest uppercase text-center mb-8">Of Month Elapsed</p>
-
-                                <div className="relative h-2 w-full bg-secondary rounded-full overflow-hidden mb-8">
-                                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-700 via-orange-500 to-amber-300 rounded-full" style={{ width: `${pct}%`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                                    {/* Pulse dot at current tip */}
-                                    <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-300 rounded-full shadow-[0_0_12px_rgba(252,211,77,0.9)] border-2 border-orange-950" style={{ left: `calc(${pct}% - 8px)` }} />
-                                </div>
-
-                                <p className="text-xs text-muted-foreground/80 font-medium italic text-center leading-relaxed px-4">
-                                    "{line}"
-                                </p>
-                            </div>
-                        </div>
-                    )
-                })()}
+                {/* Life Goals Section */}
+                <div className="lg:col-span-3">
+                    <LifeGoals userId={userId || ''} />
+                </div>
             </div>
 
             {/* ─── BENTO ROW 4: Recent Activity Strip ─── */}

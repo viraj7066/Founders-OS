@@ -1,12 +1,17 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { FinancialDashboard } from '@/components/financials/financial-overview'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 export default async function FinancialsPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id || '00000000-0000-0000-0000-000000000000'
+    const userId = user?.id
+
+    if (!userId) {
+        redirect('/login')
+    }
 
     const [{ data: clients }, { data: expenses }, { data: invoices }] = await Promise.all([
         supabase

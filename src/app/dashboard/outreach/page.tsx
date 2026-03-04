@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { OutreachDashboard } from '@/components/outreach/outreach-dashboard'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,12 +9,17 @@ export default async function OutreachPage() {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id ?? '00000000-0000-0000-0000-000000000000'
+    const userId = user?.id
+
+    if (!userId) {
+        redirect('/login')
+    }
 
     // Fetch Scripts
     const { data: scriptsData } = await supabase
         .from('outreach_scripts')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
     const scripts = (scriptsData || []).map(s => ({
@@ -31,6 +37,7 @@ export default async function OutreachPage() {
     const { data: campaignsData } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
     const campaigns = (campaignsData || []).map(c => ({
@@ -76,7 +83,7 @@ export default async function OutreachPage() {
                         initialScripts={scripts}
                         initialCampaigns={campaigns}
                         initialFollowups={followups}
-                        userId={userId}
+                        userId={userId || ''}
                     />
                 </div>
             </div>

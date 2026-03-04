@@ -6,7 +6,12 @@ export const dynamic = 'force-dynamic'
 export default async function ContentPage() {
     const supabase = await createClient()
 
-    const userId = '00000000-0000-0000-0000-000000000000'
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
+    if (!userId) {
+        return null // Middleware usually handles redirect, but good for safety
+    }
 
     const { data: posts } = await supabase
         .from('content_posts')

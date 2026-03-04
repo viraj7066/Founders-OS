@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2, Download, FileText, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Download, FileText, CheckCircle2, AlertTriangle, FolderOpen } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { retryQuery } from '@/lib/supabase/retry'
@@ -28,11 +29,12 @@ interface InvoiceItem { desc: string; qty: number; price: number }
 interface Invoice {
     id: string; client_id_or_name: string; amount: number; date: string; status: string;
     items_json: InvoiceItem[]; payment_details_json: any; notes?: string; folder_id?: string;
+    advance_received?: boolean; advance_amount?: number;
 }
 
-interface Props { invoices: Invoice[]; clients: Client[]; userId: string; activeFolderId?: string }
+interface Props { invoices: Invoice[]; clients: Client[]; userId: string; activeFolderId?: string; folders?: any[] }
 
-export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, activeFolderId }: Props) {
+export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, activeFolderId, folders = [] }: Props) {
     const supabase = createClient()
     const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -51,12 +53,23 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
     const [upi, setUpi] = useState('7066498198@ybl')
     const [phonepe, setPhonepe] = useState('7066498198')
     const [notes, setNotes] = useState('Thank you for choosing us!')
+    const [advanceReceived, setAdvanceReceived] = useState(false)
+    const [advanceAmountInput, setAdvanceAmountInput] = useState(0)
+    const [selectedFolderId, setSelectedFolderId] = useState<string>(activeFolderId || '')
 
     // Logo & Settings State
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const [logoBase64, setLogoBase64] = useState<string | null>(null)
 
+    // Sync selectedClient when clients prop arrives
     React.useEffect(() => {
+        if (!selectedClient && clients && clients.length > 0) {
+            setSelectedClient(clients[0].id)
+        }
+    }, [clients, selectedClient])
+
+    React.useEffect(() => {
+        if (!userId || userId === 'placeholder') return
         const fetchLogo = async () => {
             const { data } = await supabase.from('agency_settings').select('logo_base64').eq('user_id', userId).single()
             if (data?.logo_base64) setLogoBase64(data.logo_base64)
@@ -201,7 +214,10 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
             status: 'Sent',
             items_json: items,
             payment_details_json: { advance, terms, upi, phonepe },
-            notes: notes
+            notes: notes,
+            folder_id: selectedFolderId || null,
+            advance_received: advanceReceived,
+            advance_amount: advanceAmountInput
         }
         if (activeFolderId) payload.folder_id = activeFolderId
 
@@ -227,11 +243,28 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
         setIsSaving(false)
     }
 
+    const handleToggleAdvance = async (id: string, received: boolean) => {
+        const { data, error } = await supabase
+            .from('invoices')
+            .update({ advance_received: received, advance_amount: received ? 5000 : 0 }) // Default 5000 if quick marked
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (!error && data) {
+            setInvoices(prev => prev.map(inv => inv.id === id ? data : inv))
+            toast.success('Advance status updated')
+        }
+    }
+
     const resetForm = () => {
         setEditingId(null)
         setCustomClient('')
         setItems([{ desc: 'Service / Item', qty: 1, price: 5000 }])
         setAdvance(0)
+        setAdvanceReceived(false)
+        setAdvanceAmountInput(0)
+        setSelectedFolderId(activeFolderId || '')
     }
 
     const handleEdit = (inv: Invoice) => {
@@ -250,6 +283,9 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
         setUpi(inv.payment_details_json.upi || '')
         setPhonepe(inv.payment_details_json.phonepe || '')
         setNotes(inv.notes || '')
+        setAdvanceReceived(inv.advance_received || false)
+        setAdvanceAmountInput(inv.advance_amount || 0)
+        setSelectedFolderId(inv.folder_id || '')
         setIsCreateOpen(true)
     }
 
@@ -370,6 +406,18 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                                         <Label>Invoice Date</Label>
                                         <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
                                     </div>
+                                    <div className="space-y-2 col-span-2">
+                                        <Label>Select Folder</Label>
+                                        <Select value={selectedFolderId} onValueChange={setSelectedFolderId}>
+                                            <SelectTrigger><SelectValue placeholder="No Folder" /></SelectTrigger>
+                                            <SelectContent className="bg-card">
+                                                <SelectItem value="none">No Folder</SelectItem>
+                                                {folders.map(f => (
+                                                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
                                 {/* Items */}
@@ -394,7 +442,18 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
 
                                 {/* Payment Dets */}
                                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                    <div className="space-y-2"><Label>Advance Payment (&#8377;)</Label><Input type="number" value={advance} onChange={e => setAdvance(parseInt(e.target.value) || 0)} /></div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id="advance_rec" checked={advanceReceived} onCheckedChange={(checked) => setAdvanceReceived(!!checked)} />
+                                            <Label htmlFor="advance_rec" className="text-sm font-medium leading-none cursor-pointer">Advance Received?</Label>
+                                        </div>
+                                        {advanceReceived && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                <Label>Advance Amount (&#8377;)</Label>
+                                                <Input type="number" value={advanceAmountInput} onChange={e => setAdvanceAmountInput(parseInt(e.target.value) || 0)} />
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="space-y-2"><Label>Grand Total Computed</Label><div className="h-10 px-3 py-2 border rounded-md bg-secondary/50 font-bold">&#8377;{grandTotal.toLocaleString()}</div></div>
                                 </div>
 
@@ -436,10 +495,25 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                                                 <span className="font-semibold">{clientName}</span>
                                                 <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full border">INV-{inv.id.substring(0, 6).toUpperCase()}</span>
                                             </div>
-                                            <div className="text-sm text-muted-foreground mt-1">{format(parseISO(inv.date), 'MMM d, yyyy')} &bull; &#8377;{inv.amount.toLocaleString()}</div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-sm text-muted-foreground">{format(parseISO(inv.date), 'MMM d, yyyy')} &bull; &#8377;{inv.amount.toLocaleString()}</span>
+                                                {inv.advance_received && (
+                                                    <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">Advance: &#8377;{inv.advance_amount?.toLocaleString()}</span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <div className="flex items-center gap-3">
+                                            {!inv.advance_received && inv.status !== 'Paid' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-500 hidden sm:flex"
+                                                    onClick={() => handleToggleAdvance(inv.id, true)}
+                                                >
+                                                    <CheckCircle2 className="w-3 h-3" /> Mark Advance
+                                                </Button>
+                                            )}
                                             <Select value={inv.status} onValueChange={(val: string) => updateStatus(inv.id, val)}>
                                                 <SelectTrigger className={`h-8 border border-white/10 text-xs font-bold px-2 py-1 rounded-full outline-none w-[100px] ${inv.status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'}`}>
                                                     <SelectValue />

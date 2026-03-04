@@ -6,7 +6,12 @@ export const dynamic = 'force-dynamic'
 export default async function TeamPage() {
     const supabase = await createClient()
 
-    const userId = '00000000-0000-0000-0000-000000000000'
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
+    if (!userId) {
+        return null // Middleware should handle redirect, but being safe
+    }
 
     const { data: members } = await supabase
         .from('team_members')

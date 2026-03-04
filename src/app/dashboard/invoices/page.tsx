@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 export const dynamic = 'force-dynamic'
 export default function InvoicesPage() {
     const supabase = createClient()
-    const userId = '00000000-0000-0000-0000-000000000000'
+    const [userId, setUserId] = useState<string | null>(null)
 
     const [folders, setFolders] = useState<DocumentFolder[]>([])
     const [invoices, setInvoices] = useState<any[]>([])
@@ -24,10 +24,20 @@ export default function InvoicesPage() {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+            const uid = user?.id
+
+            if (!uid) {
+                setIsLoading(false)
+                return
+            }
+
+            setUserId(uid)
+
             const [foldersRes, invoicesRes, clientsRes] = await Promise.all([
-                supabase.from('document_folders').select('*').eq('user_id', userId).eq('type', 'invoice').order('created_at', { ascending: false }),
-                supabase.from('invoices').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-                supabase.from('clients').select('id, name').eq('user_id', userId).order('name')
+                supabase.from('document_folders').select('*').eq('user_id', uid).eq('type', 'invoice').order('created_at', { ascending: false }),
+                supabase.from('invoices').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+                supabase.from('clients').select('id, name').eq('user_id', uid).order('name')
             ])
 
             if (foldersRes.data) setFolders(foldersRes.data)
@@ -113,8 +123,9 @@ export default function InvoicesPage() {
                         <InvoiceGenerator
                             invoices={displayedInvoices}
                             clients={clients}
-                            userId={userId}
+                            userId={userId || ''}
                             activeFolderId={activeFolderId !== 'all' ? activeFolderId : undefined}
+                            folders={folders}
                         />
                     </div>
                 )}

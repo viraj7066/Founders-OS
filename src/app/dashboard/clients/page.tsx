@@ -1,18 +1,24 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ClientList } from '@/components/clients/client-list'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 export default async function ClientsPage() {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id ?? '00000000-0000-0000-0000-000000000000'
+    const userId = user?.id
+
+    if (!userId) {
+        redirect('/login')
+    }
 
     // Fetch clients
     const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
+        .eq('user_id', userId)
         .order('name', { ascending: true })
 
     const clients = (clientsData || []).map(c => ({

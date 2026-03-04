@@ -1,15 +1,23 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { DeliverableList } from '@/components/deliverables/deliverable-list'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 export default async function DeliverablesPage() {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
+    if (!userId) {
+        redirect('/login')
+    }
 
     // Fetch clients
     const { data: clientsData } = await supabase
         .from('clients')
         .select('id, name')
+        .eq('user_id', userId)
         .order('name', { ascending: true })
 
     // Fetch deliverables with client name joined
@@ -19,6 +27,7 @@ export default async function DeliverablesPage() {
             *,
             client:clients(name)
         `)
+        .eq('user_id', userId)
         .order('due_date', { ascending: true })
 
     // Map database shape to our frontend Deliverable type
@@ -38,9 +47,7 @@ export default async function DeliverablesPage() {
         name: c.name
     }))
 
-    // Get user id if available (for RLS). Falls back to a placeholder for dev.
-    const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id ?? '00000000-0000-0000-0000-000000000000'
+    // Get user id (satisfied above)
 
     return (
         <DashboardLayout>
