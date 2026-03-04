@@ -19,12 +19,6 @@ export default function LoginForm() {
         setIsLoading(true)
         setError(null)
 
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-            setError('Configuration Error: NEXT_PUBLIC_SUPABASE_URL is missing.')
-            setIsLoading(false)
-            return
-        }
-
         try {
             const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
             if (signInError) {
