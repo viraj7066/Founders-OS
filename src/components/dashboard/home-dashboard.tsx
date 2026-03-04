@@ -428,7 +428,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                             <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(completedTasks / focusList.length) * 100}%` }} />
                         </div>
                     )}
-                    <div className="flex-1 p-4 space-y-2 overflow-y-auto max-h-64">
+                    <div className="flex-1 p-4 space-y-2 overflow-y-auto max-h-80 custom-scrollbar">
                         {focusList.length === 0 ? (
                             <div className="py-8 text-center text-xs text-muted-foreground">
                                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -449,17 +449,19 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                             ))
                         )}
                     </div>
-                    <div className="p-4 border-t border-white/5">
+                    <div className="p-3 border-t border-white/5 bg-secondary/10">
                         <div className="flex gap-2">
                             <Input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()}
-                                placeholder="Add a task..." className="bg-secondary/50 border-white/8 text-sm h-9" />
-                            <Button onClick={addTask} size="icon" className="h-9 w-9 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
+                                placeholder="Add a task..." className="bg-background/50 border-white/8 text-sm h-8" />
+                            <Button onClick={addTask} size="icon" className="h-8 w-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
                                 <Plus className="w-4 h-4" />
                             </Button>
                         </div>
-                        <Link href="/dashboard/tracker" className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
-                            Open full tracker <ArrowRight className="w-3 h-3" />
-                        </Link>
+                        <div className="mt-2 flex items-center justify-between">
+                            <Link href="/dashboard/tracker" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+                                Full Tracker <ArrowRight className="w-2.5 h-2.5" />
+                            </Link>
+                        </div>
                     </div>
                 </div>
 

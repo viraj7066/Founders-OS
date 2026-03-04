@@ -90,8 +90,8 @@ export function LifeGoals({ userId }: { userId: string }) {
     }
 
     return (
-        <Card className="h-[520px] flex flex-col border-white/10 bg-card/60 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl lg:col-span-3">
-            <CardHeader className="p-6 border-b border-white/5 flex flex-row items-center justify-between space-y-0 shrink-0">
+        <Card className="h-[520px] shadow-sm flex flex-col border border-border bg-card/60 backdrop-blur-md rounded-3xl overflow-hidden lg:col-span-3">
+            <CardHeader className="p-4 px-6 border-b border-border/50 flex flex-row items-center justify-between space-y-0 shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/10 rounded-xl text-primary">
                         <Target className="w-5 h-5" />
@@ -180,11 +180,11 @@ export function LifeGoals({ userId }: { userId: string }) {
                             const tagsArray = goal.tags ? goal.tags.split(',').map(t => t.trim()).filter(Boolean) : []
 
                             return (
-                                <div key={goal.id} className="group relative p-4 rounded-2xl border border-white/5 bg-secondary/10 hover:bg-secondary/20 transition-all flex flex-col justify-between h-full">
+                                <div key={goal.id} className="group relative p-4 rounded-2xl border border-border bg-secondary/30 hover:bg-secondary/50 dark:bg-secondary/10 dark:hover:bg-secondary/20 transition-all flex flex-col justify-between h-full shadow-sm hover:shadow-md">
                                     <div>
-                                        <div className="flex items-start justify-between gap-2 mb-3">
+                                        <div className="flex items-start justify-between gap-2 mb-2">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <span className={`p-1.5 rounded-lg bg-background/50 border border-white/5 ${cat.color} shrink-0`}>
+                                                <span className={`p-1.5 rounded-lg bg-background border border-border ${cat.color} shrink-0`}>
                                                     {cat.icon}
                                                 </span>
                                                 <h4 className="text-sm font-bold tracking-tight text-foreground truncate">{goal.title}</h4>
@@ -199,7 +199,7 @@ export function LifeGoals({ userId }: { userId: string }) {
                                             </Button>
                                         </div>
 
-                                        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-3 leading-relaxed italic">
+                                        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2 leading-relaxed italic">
                                             "{goal.impact || 'Strategic impact statement'}"
                                         </p>
                                     </div>
@@ -207,7 +207,7 @@ export function LifeGoals({ userId }: { userId: string }) {
                                     {tagsArray.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-auto">
                                             {tagsArray.map((tag, i) => (
-                                                <Badge key={i} variant="outline" className="text-[8px] h-3.5 font-bold uppercase tracking-wider bg-background/30 text-muted-foreground/70 border-white/5 px-1">
+                                                <Badge key={i} variant="outline" className="text-[8px] h-3.5 font-bold uppercase tracking-wider bg-background/50 text-muted-foreground/80 border-border px-1.5">
                                                     <Hash className="w-1.5 h-1.5 mr-0.5" /> {tag}
                                                 </Badge>
                                             ))}
