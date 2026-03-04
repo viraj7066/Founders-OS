@@ -238,7 +238,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
                 {/* Main Hero Card (Spans 2 cols) */}
-                <div className="lg:col-span-2 relative overflow-hidden rounded-3xl border border-white/8 bg-card p-8 flex flex-col justify-between group">
+                <div className="lg:col-span-2 relative overflow-hidden rounded-3xl border border-white/8 bg-card p-6 sm:p-8 flex flex-col justify-between group">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
                     <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 blur-[80px] rounded-full group-hover:bg-primary/30 transition-all duration-700" />
 
@@ -247,7 +247,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                             <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
                             <span>Live · {mounted ? format(new Date(), 'MMM d, yyyy') : '...'}</span>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tight text-foreground mb-2 h-10">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-foreground mb-2 h-auto md:h-10">
                             {mounted ? `${greeting}, Viraj.` : 'Loading...'}
                         </h1>
                         <p className="text-sm text-muted-foreground max-w-[85%] leading-relaxed">
@@ -440,7 +440,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                             </div>
 
                             <div className="flex-1 p-6 flex flex-col justify-center relative z-10 bg-card">
-                                <p className="text-5xl font-black tracking-tighter text-foreground text-center mb-1">{pct}%</p>
+                                <p className="text-4xl sm:text-5xl font-black tracking-tighter text-foreground text-center mb-1">{pct}%</p>
                                 <p className="text-[10px] text-orange-500/80 font-bold tracking-widest uppercase text-center mb-8">Of Month Elapsed</p>
 
                                 <div className="relative h-2 w-full bg-secondary rounded-full overflow-hidden mb-8">

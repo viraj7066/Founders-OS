@@ -13,7 +13,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 overflow-hidden relative">
                     {/* ── Premium Topbar ── */}
-                    <header className="h-[60px] border-b border-border/60 bg-background/80 backdrop-blur-2xl flex items-center justify-between px-6 shrink-0 z-20 sticky top-0">
+                    <header className="h-[60px] border-b border-border/60 bg-background/80 backdrop-blur-2xl flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 sticky top-0">
                         {/* Subtle gradient line at top */}
                         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
@@ -56,7 +56,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </header>
 
                     {/* ── Main content ── */}
-                    <main className="flex-1 overflow-y-auto p-5 md:p-8 w-full max-w-[1600px] mx-auto">
+                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 w-full max-w-[1600px] mx-auto">
                         {children}
                     </main>
                 </div>
