@@ -8,9 +8,18 @@ export async function updateSession(request: NextRequest) {
 
     // We do not need to await cookies() here since request.cookies is synchronous
     // in middleware.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    // If environment variables are missing, skip auth and allow the request to proceed.
+    // This often happens during Vercel internal build/preview phases.
+    if (!url || !anonKey) {
+        return supabaseResponse
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url,
+        anonKey,
         {
             cookies: {
                 getAll() {
