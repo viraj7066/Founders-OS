@@ -6,6 +6,7 @@ export function createClient() {
 
     // Fallback for build time static generation
     if (!url || !anonKey) {
+        console.warn('Supabase credentials missing. Using placeholder URL.')
         return createBrowserClient(
             'https://xyz.supabase.co',
             'placeholder'

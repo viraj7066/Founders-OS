@@ -8,6 +8,9 @@ export async function createClient() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!url || !anonKey) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('Supabase credentials missing in Production environment. Using placeholder URL.')
+    }
     return createServerClient(
       'https://xyz.supabase.co',
       'placeholder',

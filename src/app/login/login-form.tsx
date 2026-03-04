@@ -19,6 +19,13 @@ export default function LoginForm() {
         setIsLoading(true)
         setError(null)
 
+        // Check if we are using the placeholder URL
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('xyz.supabase.co') || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+            setError('Configuration Error: Your Supabase URL and Key are missing in Vercel. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your project settings.')
+            setIsLoading(false)
+            return
+        }
+
         try {
             const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
             if (signInError) {
