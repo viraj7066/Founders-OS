@@ -1,0 +1,9 @@
+{
+  "error": {
+    "message": "TypeError: fetch failed",
+    "details": "TypeError: fetch failed\n\nCaused by: ConnectTimeoutError: Connect Timeout Error (UND_ERR_CONNECT_TIMEOUT)\nConnectTimeoutError: Connect Timeout Error\n    at onConnectTimeout (node:internal/deps/undici/undici:6635:28)\n    at node:internal/deps/undici/undici:6587:50\n    at Immediate._onImmediate (node:internal/deps/undici/undici:6617:37)\n    at process.processImmediate (node:internal/timers:478:21)\n    at process.callbackTrampoline (node:internal/async_hooks:130:17)",
+    "hint": "",
+    "code": ""
+  },
+  "data": null
+}

@@ -1,0 +1,1 @@
+export interface Lead { id: string; name: string; company?: string; email?: string; stage: 'lead' | 'contacted' | 'meeting' | 'proposal' | 'closed'; value?: number; service?: string; created_at?: string; }
