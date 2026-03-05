@@ -6,27 +6,34 @@ import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
-    constructor(props: { children: ReactNode }) {
+// ─── Error Boundary to catch Tldraw internal errors ───────────────────────────
+class CanvasErrorBoundary extends Component<
+    { children: ReactNode; onReset: () => void },
+    { hasError: boolean; error: Error | null }
+> {
+    constructor(props: { children: ReactNode; onReset: () => void }) {
         super(props)
         this.state = { hasError: false, error: null }
     }
-    static getDerivedStateFromError(error: Error) { return { hasError: true, error } }
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Tldraw crashed:", error, errorInfo) }
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error }
+    }
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        console.error('[CanvasErrorBoundary] Tldraw crashed:', error, info)
+    }
     render() {
         if (this.state.hasError) {
             return (
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-black text-white">
-                    <h2 className="text-xl font-bold mb-4 text-red-500">Board Data Corrupted</h2>
-                    <p className="text-sm text-gray-400 mb-6">The visual data for this board contains an invalid schema.</p>
-                    <pre className="text-xs bg-gray-900 p-4 rounded overflow-auto max-w-full text-left mb-6">
-                        {this.state.error?.message}
-                    </pre>
+                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-background text-foreground">
+                    <h2 className="text-xl font-bold mb-2 text-destructive">Canvas Error</h2>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-sm text-center">
+                        {this.state.error?.message ?? 'An unknown error occurred in the canvas.'}
+                    </p>
                     <button
-                        onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                        onClick={this.props.onReset}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition"
                     >
-                        Reload Board
+                        Reset Board
                     </button>
                 </div>
             )
@@ -35,20 +42,23 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
     }
 }
 
+// ─── Main Component ────────────────────────────────────────────────────────────
 export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
-    const supabase = createClient()
     const [store, setStore] = useState<TLStore | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [resetKey, setResetKey] = useState(0)
 
-    // 1. Fetch data and initialize the Tldraw Store externally BEFORE mounting Tldraw
+    // Stable supabase client reference — not recreated on renders
+    const supabase = createClient()
+
     useEffect(() => {
-        let isMounted = true
+        let cancelled = false
 
-        const initializeStore = async () => {
+        async function init() {
             setIsLoading(true)
 
-            // Create a fresh store instance
-            const newStore = createTLStore({ shapeUtils: defaultShapeUtils })
+            // Build a fresh, empty store
+            const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
 
             try {
                 const { data, error } = await supabase
@@ -57,113 +67,104 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                     .eq('id', boardId)
                     .single()
 
-                if (error) throw error
-
-                // Robust schema validation to prevent canvas crashes from old/buggy snapshots
-                if (data && data.canvas_state && data.canvas_state.store) {
-                    const snapshot = data.canvas_state.store
-                    // A valid v3 snapshot must have either document and session, or be a raw record map
-                    if (snapshot.document || snapshot['document:document']) {
+                if (!cancelled) {
+                    if (!error && data?.canvas_state?.store) {
                         try {
-                            loadSnapshot(newStore, snapshot)
-                        } catch (loadErr) {
-                            console.error("Board has corrupted data, starting fresh.", loadErr)
-                            toast.error("Recovered from corrupted board data.")
+                            loadSnapshot(freshStore, data.canvas_state.store)
+                        } catch (snapErr) {
+                            console.warn('[InspirationCanvas] Bad snapshot, starting fresh.', snapErr)
                         }
                     }
+                    setStore(freshStore)
+                    setIsLoading(false)
                 }
             } catch (err) {
-                console.error("Failed to fetch board state:", err)
-                if (isMounted) toast.error('Failed to load board state')
-            }
-
-            if (isMounted) {
-                setStore(newStore)
-                setIsLoading(false)
+                if (!cancelled) {
+                    console.error('[InspirationCanvas] Failed to load board:', err)
+                    // Still give them a usable empty board
+                    setStore(freshStore)
+                    setIsLoading(false)
+                }
             }
         }
 
-        initializeStore()
+        init()
+        return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [boardId, resetKey])
 
-        return () => { isMounted = false }
-    }, [boardId]) // supabase reference removed from dependencies to ensure absolute 0 looping
+    const handleReset = useCallback(() => {
+        setStore(null)
+        setIsLoading(true)
+        setResetKey(k => k + 1)
+    }, [])
 
     const handleMount = useCallback((editor: Editor) => {
-        // 2. Setup Auto-Save Listener
-        let timeoutId: NodeJS.Timeout
+        // Auto-save: debounced, zero React state mutations
+        let saveTimer: ReturnType<typeof setTimeout>
 
-        editor.store.listen(() => {
-            clearTimeout(timeoutId)
-            timeoutId = setTimeout(async () => {
+        const cleanup = editor.store.listen(() => {
+            clearTimeout(saveTimer)
+            saveTimer = setTimeout(async () => {
                 try {
-                    const snapshot = getSnapshot(editor.store)
+                    const snap = getSnapshot(editor.store)
                     await supabase
                         .from('inspiration_boards')
                         .update({
-                            canvas_state: { store: snapshot },
-                            updated_at: new Date().toISOString()
+                            canvas_state: { store: snap },
+                            updated_at: new Date().toISOString(),
                         })
                         .eq('id', boardId)
-                } catch (saveError) {
-                    console.error("Failed to sync board to cloud:", saveError)
+                } catch (err) {
+                    console.error('[InspirationCanvas] Auto-save failed:', err)
                 }
-            }, 1000)
+            }, 1200)
         }, { scope: 'document' })
 
-        // 3. Register External Assets (Drag & Drop)
+        // Drag-and-drop image uploads
         editor.registerExternalAssetHandler('file', async ({ file }) => {
-            try {
-                const fileExt = file.name.split('.').pop() || 'png'
-                const fileName = `${userId}/${boardId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+            const ext = file.name.split('.').pop() ?? 'png'
+            const path = `${userId}/${boardId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
 
-                const { error: uploadError } = await supabase.storage
-                    .from('inspiration_assets')
-                    .upload(fileName, file)
-
-                if (uploadError) throw uploadError
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('inspiration_assets')
-                    .getPublicUrl(fileName)
-
-                return {
-                    id: `asset:${Date.now()}` as TLAssetId,
-                    type: 'image',
-                    typeName: 'asset',
-                    props: {
-                        name: file.name,
-                        src: publicUrl,
-                        w: 100,
-                        h: 100,
-                        isAnimated: false,
-                        mimeType: file.type,
-                    },
-                    meta: {}
-                } as any
-            } catch (error) {
-                console.error('Asset upload error:', error)
-                toast.error('Failed to upload image')
+            const { error } = await supabase.storage.from('inspiration_assets').upload(path, file)
+            if (error) {
+                toast.error('Image upload failed')
                 throw error
             }
+
+            const { data: { publicUrl } } = supabase.storage.from('inspiration_assets').getPublicUrl(path)
+
+            return {
+                id: `asset:${crypto.randomUUID()}` as TLAssetId,
+                type: 'image',
+                typeName: 'asset',
+                props: { name: file.name, src: publicUrl, w: 800, h: 600, isAnimated: false, mimeType: file.type },
+                meta: {},
+            } as any
         })
-    }, [boardId, supabase, userId])
+
+        // Cleanup store listener when editor unmounts
+        return () => {
+            cleanup()
+            clearTimeout(saveTimer)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [boardId, userId])
 
     if (isLoading || !store) {
         return (
-            <div className="w-full h-full flex flex-col items-center justify-center fade-in bg-[#F9FAFB] dark:bg-[#121212]">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Canvas...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#F9FAFB] dark:bg-[#121212]">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+                <p className="text-xs font-medium text-muted-foreground tracking-wide">Preparing canvas…</p>
             </div>
         )
     }
 
     return (
-        <div style={{ position: 'absolute', inset: 0 }}>
-            <CanvasErrorBoundary>
-                <Tldraw
-                    store={store}
-                    onMount={handleMount}
-                />
+        <div className="absolute inset-0">
+            <CanvasErrorBoundary onReset={handleReset}>
+                {/* key={store} ensures Tldraw never re-mounts on unexpected store reference changes */}
+                <Tldraw store={store} onMount={handleMount} autoFocus />
             </CanvasErrorBoundary>
         </div>
     )
