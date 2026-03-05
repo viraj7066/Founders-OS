@@ -1,37 +1,99 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import { Tldraw, useEditor, getSnapshot, loadSnapshot, Editor, TLAssetId } from '@tldraw/tldraw'
+import React, { useState, useEffect, useCallback, Component, ErrorInfo, ReactNode } from 'react'
+import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils, TLStore } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-// Moved OUTSIDE to prevent React from recreating it on every render, which crashes Tldraw
-const SyncState = ({ boardId, initialData }: { boardId: string, initialData: any }) => {
-    const editor = useEditor()
-    const [isSaving, setIsSaving] = useState(false)
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+    constructor(props: { children: ReactNode }) {
+        super(props)
+        this.state = { hasError: false, error: null }
+    }
+    static getDerivedStateFromError(error: Error) { return { hasError: true, error } }
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Tldraw crashed:", error, errorInfo) }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-black text-white">
+                    <h2 className="text-xl font-bold mb-4 text-red-500">Board Data Corrupted</h2>
+                    <p className="text-sm text-gray-400 mb-6">The visual data for this board contains an invalid schema.</p>
+                    <pre className="text-xs bg-gray-900 p-4 rounded overflow-auto max-w-full text-left mb-6">
+                        {this.state.error?.message}
+                    </pre>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                        Reload Board
+                    </button>
+                </div>
+            )
+        }
+        return this.props.children
+    }
+}
+
+export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
     const supabase = createClient()
-    const isLoadedRef = useRef(false)
+    const [store, setStore] = useState<TLStore | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
 
+    // 1. Fetch data and initialize the Tldraw Store externally BEFORE mounting Tldraw
     useEffect(() => {
-        if (!editor) return
+        let isMounted = true
 
-        if (!isLoadedRef.current) {
-            isLoadedRef.current = true
-            if (initialData && Object.keys(initialData).length > 0 && initialData.store) {
-                try {
-                    loadSnapshot(editor.store, initialData.store)
-                } catch (e) {
-                    console.error("Failed to load initial data snapshot:", e)
+        const initializeStore = async () => {
+            setIsLoading(true)
+
+            // Create a fresh store instance
+            const newStore = createTLStore({ shapeUtils: defaultShapeUtils })
+
+            try {
+                const { data, error } = await supabase
+                    .from('inspiration_boards')
+                    .select('canvas_state')
+                    .eq('id', boardId)
+                    .single()
+
+                if (error) throw error
+
+                // Robust schema validation to prevent canvas crashes from old/buggy snapshots
+                if (data && data.canvas_state && data.canvas_state.store) {
+                    const snapshot = data.canvas_state.store
+                    // A valid v3 snapshot must have either document and session, or be a raw record map
+                    if (snapshot.document || snapshot['document:document']) {
+                        try {
+                            loadSnapshot(newStore, snapshot)
+                        } catch (loadErr) {
+                            console.error("Board has corrupted data, starting fresh.", loadErr)
+                            toast.error("Recovered from corrupted board data.")
+                        }
+                    }
                 }
+            } catch (err) {
+                console.error("Failed to fetch board state:", err)
+                if (isMounted) toast.error('Failed to load board state')
+            }
+
+            if (isMounted) {
+                setStore(newStore)
+                setIsLoading(false)
             }
         }
 
+        initializeStore()
+
+        return () => { isMounted = false }
+    }, [boardId]) // supabase reference removed from dependencies to ensure absolute 0 looping
+
+    const handleMount = useCallback((editor: Editor) => {
+        // 2. Setup Auto-Save Listener
         let timeoutId: NodeJS.Timeout
 
-        const handleChange = () => {
+        editor.store.listen(() => {
             clearTimeout(timeoutId)
-            setIsSaving(true)
             timeoutId = setTimeout(async () => {
                 try {
                     const snapshot = getSnapshot(editor.store)
@@ -43,63 +105,12 @@ const SyncState = ({ boardId, initialData }: { boardId: string, initialData: any
                         })
                         .eq('id', boardId)
                 } catch (saveError) {
-                    console.error("Failed to save snapshot to Supabase:", saveError)
-                } finally {
-                    setIsSaving(false)
+                    console.error("Failed to sync board to cloud:", saveError)
                 }
             }, 1000)
-        }
+        }, { scope: 'document' })
 
-        const unlisten = editor.store.listen(handleChange, { scope: 'document' })
-
-        return () => {
-            unlisten()
-            clearTimeout(timeoutId)
-        }
-    }, [editor, boardId, initialData, supabase])
-
-    return (
-        <div className="absolute bottom-4 right-4 z-[9999] pointer-events-none fade-in">
-            {isSaving ? (
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground bg-background/80 px-2 flex py-1 rounded-md backdrop-blur shadow-sm items-center gap-1.5 border border-border/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" /> Saving...
-                </span>
-            ) : (
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-500 bg-background/80 px-2 flex py-1 rounded-md backdrop-blur shadow-sm items-center gap-1.5 border border-border/50 opacity-50 duration-500 ease-in-out">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Saved
-                </span>
-            )}
-        </div>
-    )
-}
-
-export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
-    const supabase = createClient()
-    const [initialData, setInitialData] = useState<any>(null)
-    const [isLoading, setIsLoading] = useState(true)
-
-    // Fetch initial state
-    useEffect(() => {
-        const fetchBoard = async () => {
-            const { data, error } = await supabase
-                .from('inspiration_boards')
-                .select('canvas_state')
-                .eq('id', boardId)
-                .single()
-
-            if (error) {
-                toast.error('Failed to load board')
-            } else if (data && data.canvas_state && Object.keys(data.canvas_state).length > 0) {
-                setInitialData(data.canvas_state)
-            } else {
-                setInitialData({})
-            }
-            setIsLoading(false)
-        }
-        fetchBoard()
-    }, [boardId, supabase])
-
-    const handleMount = (editor: Editor) => {
+        // 3. Register External Assets (Drag & Drop)
         editor.registerExternalAssetHandler('file', async ({ file }) => {
             try {
                 const fileExt = file.name.split('.').pop() || 'png'
@@ -115,7 +126,6 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                     .from('inspiration_assets')
                     .getPublicUrl(fileName)
 
-                // Return native asset object referencing the cloud URL
                 return {
                     id: `asset:${Date.now()}` as TLAssetId,
                     type: 'image',
@@ -123,7 +133,7 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                     props: {
                         name: file.name,
                         src: publicUrl,
-                        w: 100, // Tldraw will auto-calculate actual dimensions based on src
+                        w: 100,
                         h: 100,
                         isAnimated: false,
                         mimeType: file.type,
@@ -136,20 +146,25 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                 throw error
             }
         })
-    }
+    }, [boardId, supabase, userId])
 
-    if (isLoading) return <div className="w-full h-full flex flex-col items-center justify-center fade-in bg-[#F9FAFB] dark:bg-[#121212]"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" /><p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Canvas...</p></div>
+    if (isLoading || !store) {
+        return (
+            <div className="w-full h-full flex flex-col items-center justify-center fade-in bg-[#F9FAFB] dark:bg-[#121212]">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Canvas...</p>
+            </div>
+        )
+    }
 
     return (
         <div style={{ position: 'absolute', inset: 0 }}>
-            <Tldraw
-                persistenceKey={undefined}
-                onMount={handleMount}
-                options={{ maxPages: 1 }}
-                inferDarkMode
-            >
-                <SyncState boardId={boardId} initialData={initialData} />
-            </Tldraw>
+            <CanvasErrorBoundary>
+                <Tldraw
+                    store={store}
+                    onMount={handleMount}
+                />
+            </CanvasErrorBoundary>
         </div>
     )
 }
