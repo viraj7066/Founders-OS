@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react'
-import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils, TLStore } from '@tldraw/tldraw'
+import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -9,19 +9,21 @@ import { toast } from 'sonner'
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 class CanvasErrorBoundary extends Component<
     { children: ReactNode },
-    { hasError: boolean; error: Error | null }
+    { hasError: boolean; message: string }
 > {
-    state = { hasError: false, error: null }
-    static getDerivedStateFromError(error: Error) { return { hasError: true, error } }
-    componentDidCatch(error: Error, info: ErrorInfo) { console.error('[CanvasErrorBoundary]', error, info) }
+    state = { hasError: false, message: '' }
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, message: error?.message ?? 'Unknown error' }
+    }
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        console.error('[CanvasErrorBoundary]', error, info)
+    }
     render() {
         if (this.state.hasError) {
             return (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-foreground p-8">
-                    <p className="text-destructive font-semibold mb-2">Canvas Error</p>
-                    <p className="text-xs text-muted-foreground mb-4 text-center max-w-xs">
-                        {((this.state.error as unknown) as Error)?.message ?? 'Unknown error'}
-                    </p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-foreground p-8 gap-4">
+                    <p className="text-destructive font-semibold">Canvas Error</p>
+                    <p className="text-xs text-muted-foreground text-center max-w-xs">{this.state.message}</p>
                     <button
                         onClick={() => window.location.reload()}
                         className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
@@ -35,76 +37,72 @@ class CanvasErrorBoundary extends Component<
     }
 }
 
-// ─── Canvas Component ───────────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────────────────────────
 export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
-    // Single stable supabase client — created once, stored in ref
+    // ⚡ Store created SYNCHRONOUSLY — never changes reference after mount.
+    // This means Tldraw never receives a new store prop, preventing mid-session crashes.
+    const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
+    const [isLoadingData, setIsLoadingData] = useState(true)
+
     const supabaseRef = useRef(createClient())
-
-    const [store, setStore] = useState<TLStore | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-
-    // Track whether component is still mounted to avoid setState on unmounted component
+    const editorRef = useRef<Editor | null>(null)
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const storeListenerRef = useRef<(() => void) | null>(null)
     const mountedRef = useRef(true)
+
     useEffect(() => {
         mountedRef.current = true
         return () => { mountedRef.current = false }
     }, [])
 
-    // Load initial state once — no supabase in deps to prevent loops
+    // Load saved canvas data into the already-created store
     useEffect(() => {
-        async function init() {
-            const supabase = supabaseRef.current
-            const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
+        let cancelled = false
 
+        async function loadData() {
             try {
-                const { data } = await supabase
+                const { data } = await supabaseRef.current
                     .from('inspiration_boards')
                     .select('canvas_state')
                     .eq('id', boardId)
                     .single()
 
+                if (cancelled) return
+
                 if (data?.canvas_state?.store) {
                     try {
-                        loadSnapshot(freshStore, data.canvas_state.store)
+                        // Load into existing store — no store reference change, no Tldraw remount
+                        loadSnapshot(store, data.canvas_state.store)
                     } catch {
-                        console.warn('[InspirationCanvas] Corrupted snapshot, starting fresh.')
+                        console.warn('[InspirationCanvas] Bad snapshot, using empty board.')
                     }
                 }
             } catch (err) {
                 console.error('[InspirationCanvas] Load error:', err)
-            }
-
-            // Only update state if still mounted
-            if (mountedRef.current) {
-                setStore(freshStore)
-                setIsLoading(false)
+            } finally {
+                if (!cancelled && mountedRef.current) {
+                    setIsLoadingData(false)
+                }
             }
         }
 
-        init()
-        // boardId is stable per-render of this component; only re-init if it changes
-    }, [boardId])
-
-    // onMount: called by Tldraw once after editor initialises
-    // Must NOT return a cleanup function — Tldraw ignores it and it confuses the hook
-    const editorRef = useRef<Editor | null>(null)
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const storeListenerRef = useRef<(() => void) | null>(null)
+        loadData()
+        return () => { cancelled = true }
+    }, [boardId, store])
 
     function handleMount(editor: Editor) {
         editorRef.current = editor
 
-        // Clean up any previous listener (safety net)
+        // Clean up previous listener if any
         if (storeListenerRef.current) {
             storeListenerRef.current()
-            storeListenerRef.current = null
         }
 
-        // Debounced auto-save — no React state, no re-renders
+        // Debounced auto-save — purely imperative, zero React state mutations
         storeListenerRef.current = editor.store.listen(() => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
             saveTimerRef.current = setTimeout(async () => {
-                if (!editorRef.current) return
+                if (!editorRef.current || !mountedRef.current) return
                 try {
                     const snap = getSnapshot(editorRef.current.store)
                     await supabaseRef.current
@@ -120,14 +118,16 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
             }, 1500)
         }, { scope: 'document' })
 
-        // Image drag-and-drop upload
+        // Image upload handler
         editor.registerExternalAssetHandler('file', async ({ file }) => {
             try {
                 const ext = file.name.split('.').pop() ?? 'png'
                 const path = `${userId}/${boardId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-                const { error } = await supabaseRef.current.storage.from('inspiration_assets').upload(path, file)
+                const { error } = await supabaseRef.current.storage
+                    .from('inspiration_assets').upload(path, file)
                 if (error) throw error
-                const { data: { publicUrl } } = supabaseRef.current.storage.from('inspiration_assets').getPublicUrl(path)
+                const { data: { publicUrl } } = supabaseRef.current.storage
+                    .from('inspiration_assets').getPublicUrl(path)
                 return {
                     id: `asset:${crypto.randomUUID()}` as TLAssetId,
                     type: 'image' as const,
@@ -142,7 +142,7 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
         })
     }
 
-    // Cleanup store listener when component unmounts
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             storeListenerRef.current?.()
@@ -150,20 +150,28 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
         }
     }, [])
 
-    if (isLoading || !store) {
-        return (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#F9FAFB] dark:bg-[#121212]">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-xs font-medium text-muted-foreground">Preparing canvas…</p>
-            </div>
-        )
-    }
-
     return (
         <div className="absolute inset-0">
             <CanvasErrorBoundary>
+                {/*
+                 * Tldraw is ALWAYS mounted from the first render.
+                 * The store reference never changes — we mutate the store's data
+                 * (via loadSnapshot) without ever changing the React prop.
+                 * This prevents Tldraw from unmounting on Vercel when async data loads.
+                 */}
                 <Tldraw store={store} onMount={handleMount} autoFocus />
             </CanvasErrorBoundary>
+
+            {/* Loading overlay sits ON TOP of Tldraw while data fetches — no unmount/remount */}
+            {isLoadingData && (
+                <div
+                    className="absolute inset-0 flex flex-col items-center justify-center bg-background z-[100]"
+                    style={{ pointerEvents: 'all' }}
+                >
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-xs font-medium text-muted-foreground">Preparing canvas…</p>
+                </div>
+            )}
         </div>
     )
 }
