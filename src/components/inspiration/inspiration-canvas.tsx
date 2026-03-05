@@ -1,10 +1,77 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Tldraw, useEditor, getSnapshot, loadSnapshot, Editor, TLAssetId } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+
+// Moved OUTSIDE to prevent React from recreating it on every render, which crashes Tldraw
+const SyncState = ({ boardId, initialData }: { boardId: string, initialData: any }) => {
+    const editor = useEditor()
+    const [isSaving, setIsSaving] = useState(false)
+    const supabase = createClient()
+    const isLoadedRef = useRef(false)
+
+    useEffect(() => {
+        if (!editor) return
+
+        if (!isLoadedRef.current) {
+            isLoadedRef.current = true
+            if (initialData && Object.keys(initialData).length > 0 && initialData.store) {
+                try {
+                    loadSnapshot(editor.store, initialData.store)
+                } catch (e) {
+                    console.error("Failed to load initial data snapshot:", e)
+                }
+            }
+        }
+
+        let timeoutId: NodeJS.Timeout
+
+        const handleChange = () => {
+            clearTimeout(timeoutId)
+            setIsSaving(true)
+            timeoutId = setTimeout(async () => {
+                try {
+                    const snapshot = getSnapshot(editor.store)
+                    await supabase
+                        .from('inspiration_boards')
+                        .update({
+                            canvas_state: { store: snapshot },
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', boardId)
+                } catch (saveError) {
+                    console.error("Failed to save snapshot to Supabase:", saveError)
+                } finally {
+                    setIsSaving(false)
+                }
+            }, 1000)
+        }
+
+        const unlisten = editor.store.listen(handleChange, { scope: 'document' })
+
+        return () => {
+            unlisten()
+            clearTimeout(timeoutId)
+        }
+    }, [editor, boardId, initialData, supabase])
+
+    return (
+        <div className="absolute bottom-4 right-4 z-[9999] pointer-events-none fade-in">
+            {isSaving ? (
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground bg-background/80 px-2 flex py-1 rounded-md backdrop-blur shadow-sm items-center gap-1.5 border border-border/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" /> Saving...
+                </span>
+            ) : (
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-500 bg-background/80 px-2 flex py-1 rounded-md backdrop-blur shadow-sm items-center gap-1.5 border border-border/50 opacity-50 duration-500 ease-in-out">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Saved
+                </span>
+            )}
+        </div>
+    )
+}
 
 export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
     const supabase = createClient()
@@ -31,65 +98,6 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
         }
         fetchBoard()
     }, [boardId, supabase])
-
-    // Sync state
-    const SyncState = () => {
-        const editor = useEditor()
-        const [isSaving, setIsSaving] = useState(false)
-
-        useEffect(() => {
-            if (!editor) return
-
-            if (initialData && Object.keys(initialData).length > 0) {
-                try {
-                    if (initialData.store) {
-                        loadSnapshot(editor.store, initialData.store)
-                    }
-                } catch (e) {
-                    console.error("Failed to load initial data", e)
-                }
-            }
-
-            let timeoutId: NodeJS.Timeout
-
-            const handleChange = () => {
-                clearTimeout(timeoutId)
-                setIsSaving(true)
-                timeoutId = setTimeout(async () => {
-                    const snapshot = getSnapshot(editor.store)
-                    await supabase
-                        .from('inspiration_boards')
-                        .update({
-                            canvas_state: { store: snapshot },
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', boardId)
-                    setIsSaving(false)
-                }, 1500)
-            }
-
-            const unlisten = editor.store.listen(handleChange, { scope: 'document' })
-
-            return () => {
-                unlisten()
-                clearTimeout(timeoutId)
-            }
-        }, [editor])
-
-        return (
-            <div className="absolute bottom-4 right-4 z-[9999] pointer-events-none">
-                {isSaving ? (
-                    <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground bg-background/80 px-2 py-1 rounded-md backdrop-blur shadow-sm">
-                        Saving...
-                    </span>
-                ) : (
-                    <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-500 bg-background/80 px-2 py-1 rounded-md backdrop-blur shadow-sm">
-                        Saved to Cloud
-                    </span>
-                )}
-            </div>
-        )
-    }
 
     const handleMount = (editor: Editor) => {
         editor.registerExternalAssetHandler('file', async ({ file }) => {
@@ -130,7 +138,7 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
         })
     }
 
-    if (isLoading) return <div className="w-full h-full flex items-center justify-center">Loading Canvas...</div>
+    if (isLoading) return <div className="w-full h-full flex flex-col items-center justify-center fade-in bg-[#F9FAFB] dark:bg-[#121212]"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" /><p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Canvas...</p></div>
 
     return (
         <div style={{ position: 'absolute', inset: 0 }}>
@@ -138,8 +146,9 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                 persistenceKey={undefined}
                 onMount={handleMount}
                 options={{ maxPages: 1 }}
+                inferDarkMode
             >
-                <SyncState />
+                <SyncState boardId={boardId} initialData={initialData} />
             </Tldraw>
         </div>
     )
