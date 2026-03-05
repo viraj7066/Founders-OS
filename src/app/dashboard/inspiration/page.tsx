@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { ChevronLeft, LayoutGrid, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 
 // Dynamically import the heavyweight canvas — avoids SSR issues with Tldraw CSS
 const InspirationCanvas = dynamic(
@@ -27,6 +28,7 @@ export const dynamic_param = 'force-dynamic'
 
 export default function InspirationPage() {
     const supabase = createClient()
+    const router = useRouter()
     const [userId, setUserId] = useState<string | null>(null)
     const [folders, setFolders] = useState<DocumentFolder[]>([])
     const [boards, setBoards] = useState<Board[]>([])
@@ -52,6 +54,13 @@ export default function InspirationPage() {
             setIsLoading(false)
         }
         fetchData()
+
+        // Listen for auth sign-out so we redirect gracefully instead of
+        // the middleware silently kicking the user while on the canvas
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') router.push('/login')
+        })
+        return () => subscription.unsubscribe()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
