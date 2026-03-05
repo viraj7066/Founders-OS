@@ -28,7 +28,8 @@ import {
     Zap,
     FileText,
     Briefcase,
-    LogOut
+    LogOut,
+    Lightbulb
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -64,6 +65,7 @@ const navGroups = [
         items: [
             { title: "Content Calendar", url: "/dashboard/content", icon: CalendarDays },
             { title: "Asset Vault", url: "/dashboard/vault", icon: FolderOpen },
+            { title: "Inspiration Board", url: "/dashboard/inspiration", icon: Lightbulb },
         ]
     },
 ]

@@ -11,13 +11,13 @@ import { motion } from 'framer-motion'
 export interface DocumentFolder {
     id: string
     name: string
-    type: 'invoice' | 'contract'
+    type: 'invoice' | 'contract' | 'inspiration'
     created_at: string
 }
 
 interface DocumentFoldersProps {
     folders: DocumentFolder[]
-    type: 'invoice' | 'contract'
+    type: 'invoice' | 'contract' | 'inspiration'
     onFolderClick: (folderId: string) => void
     onCreateFolder: (name: string) => Promise<void>
     getItemCount: (folderId: string) => number
@@ -97,7 +97,7 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[400px]">
                         <DialogHeader>
-                            <DialogTitle>Create New {type === 'invoice' ? 'Invoice' : 'Contract'} Folder</DialogTitle>
+                            <DialogTitle>Create New {type === 'invoice' ? 'Invoice' : type === 'contract' ? 'Contract' : 'Inspiration'} Folder</DialogTitle>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
