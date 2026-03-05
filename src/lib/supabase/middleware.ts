@@ -6,39 +6,39 @@ export async function updateSession(request: NextRequest) {
         request,
     })
 
-    // We do not need to await cookies() here since request.cookies is synchronous
-    // in middleware.
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     // If environment variables are missing, skip auth and allow the request to proceed.
-    // This often happens during Vercel internal build/preview phases.
-    if (!url || !anonKey) {
+    if (!supabaseUrl || !supabaseAnonKey) {
         return supabaseResponse
     }
 
     const supabase = createServerClient(
-        url,
-        anonKey,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
+                    // Forward cookies to the request so subsequent middleware/handlers can read them
                     cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-                    supabaseResponse = NextResponse.next({
-                        request,
-                    })
+                    supabaseResponse = NextResponse.next({ request })
+
+                    // CRITICAL: Pass ALL cookie options including maxAge to the response.
+                    // Previously maxAge was stripped, causing session cookies to expire on navigation
+                    // on Vercel (production), which was throwing users out of the canvas.
                     cookiesToSet.forEach(({ name, value, options }) => {
-                        const { maxAge, ...sessionOptions } = options
-                        supabaseResponse.cookies.set(name, value, sessionOptions)
+                        supabaseResponse.cookies.set(name, value, options)
                     })
                 },
             },
         }
     )
 
+    // Validate session server-side. This also refreshes the token if needed.
     const {
         data: { user },
     } = await supabase.auth.getUser()
