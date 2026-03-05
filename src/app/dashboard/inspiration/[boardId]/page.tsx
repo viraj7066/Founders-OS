@@ -1,97 +1,42 @@
-'use client'
+// SERVER COMPONENT — reads auth from cookies, passes userId to client canvas
+// No 'use client' — this runs on the server before anything reaches the browser
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { BoardCanvas } from './board-canvas'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { ChevronLeft } from 'lucide-react'
-import dynamic from 'next/dynamic'
+interface Props {
+    params: Promise<{ boardId: string }>
+}
 
-// Load Tldraw only in browser
-const InspirationCanvas = dynamic(
-    () => import('@/components/inspiration/inspiration-canvas').then(m => m.InspirationCanvas),
-    { ssr: false, loading: () => null }
-)
+export default async function BoardPage({ params }: Props) {
+    const { boardId } = await params
 
-export default function BoardPage() {
-    const params = useParams()
-    const router = useRouter()
-    const boardId = params.boardId as string
+    // Validate session server-side using cookies — zero client-side timing issues
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const supabaseRef = useRef(createClient())
-    const [boardName, setBoardName] = useState('')
-    const [userId, setUserId] = useState<string | null>(null)
-    const [ready, setReady] = useState(false)
+    if (!user) {
+        redirect('/login')
+    }
 
-    useEffect(() => {
-        let cancelled = false
-        async function load() {
-            const supabase = supabaseRef.current
-            const { data: { session } } = await supabase.auth.getSession()
-            const uid = session?.user?.id
-            if (!uid || cancelled) return
+    // Fetch board name server-side too
+    const { data: board } = await supabase
+        .from('inspiration_boards')
+        .select('name')
+        .eq('id', boardId)
+        .eq('user_id', user.id)
+        .single()
 
-            const { data } = await supabase
-                .from('inspiration_boards')
-                .select('name')
-                .eq('id', boardId)
-                .single()
+    if (!board) {
+        redirect('/dashboard/inspiration')
+    }
 
-            if (cancelled) return
-            setUserId(uid)
-            setBoardName(data?.name ?? 'Untitled Board')
-            setReady(true)
-        }
-        load()
-        return () => { cancelled = true }
-    }, [boardId])
-
+    // Pass stable, server-validated data to the client canvas component
     return (
-        <div
-            style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 9999,
-                display: 'flex',
-                flexDirection: 'column',
-                backgroundColor: 'var(--background, #fff)',
-            }}
-        >
-            {/* Header */}
-            <div
-                style={{
-                    height: 56,
-                    borderBottom: '1px solid var(--border)',
-                    background: 'var(--background)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '0 16px',
-                    flexShrink: 0,
-                    zIndex: 10,
-                }}
-            >
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => router.back()}
-                    className="h-8 w-8"
-                >
-                    <ChevronLeft className="w-5 h-5" />
-                </Button>
-                <span className="font-semibold text-foreground">{boardName}</span>
-            </div>
-
-            {/* Canvas */}
-            <div style={{ flex: 1, position: 'relative' }}>
-                {ready && userId ? (
-                    <InspirationCanvas boardId={boardId} userId={userId} />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                )}
-            </div>
-        </div>
+        <BoardCanvas
+            boardId={boardId}
+            userId={user.id}
+            boardName={board.name}
+        />
     )
 }

@@ -28,10 +28,10 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
+            // Pass ALL cookie options through, including maxAge.
+            // Previously maxAge was stripped, causing session expiry on Vercel.
             cookiesToSet.forEach(({ name, value, options }) => {
-              // Strip maxAge to ensure it's a session cookie
-              const { maxAge, ...sessionOptions } = options
-              cookieStore.set(name, value, sessionOptions)
+              cookieStore.set(name, value, options)
             })
           } catch {
             // The `setAll` method was called from a Server Component.
