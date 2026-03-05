@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { DocumentFolders, DocumentFolder } from '@/components/documents/document-folders'
 import { createClient } from '@/lib/supabase/client'
@@ -8,13 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronLeft, LayoutGrid, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import dynamic from 'next/dynamic'
-
-// Load Tldraw ONLY in the browser (it uses window/document/WebGL)
-const InspirationCanvas = dynamic(
-    () => import('@/components/inspiration/inspiration-canvas').then(m => m.InspirationCanvas),
-    { ssr: false, loading: () => null }
-)
 
 interface Board {
     id: string
@@ -24,7 +18,7 @@ interface Board {
 }
 
 export default function InspirationPage() {
-    // Single stable Supabase client reference for the lifetime of this component
+    const router = useRouter()
     const supabaseRef = useRef(createClient())
     const supabase = supabaseRef.current
 
@@ -32,17 +26,13 @@ export default function InspirationPage() {
     const [folders, setFolders] = useState<DocumentFolder[]>([])
     const [boards, setBoards] = useState<Board[]>([])
     const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
-    const [activeBoard, setActiveBoard] = useState<Board | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [newBoardName, setNewBoardName] = useState('')
 
     useEffect(() => {
         let cancelled = false
-
         async function fetchData() {
-            setIsLoading(true)
             try {
-                // getSession is synchronous/cached - avoids network round-trip that causes delay
                 const { data: { session } } = await supabase.auth.getSession()
                 const uid = session?.user?.id
                 if (!uid || cancelled) return
@@ -51,38 +41,29 @@ export default function InspirationPage() {
 
                 const [foldersRes, boardsRes] = await Promise.all([
                     supabase.from('document_folders')
-                        .select('*')
-                        .eq('user_id', uid)
-                        .eq('type', 'inspiration')
+                        .select('*').eq('user_id', uid).eq('type', 'inspiration')
                         .order('created_at', { ascending: false }),
                     supabase.from('inspiration_boards')
-                        .select('id, name, folder_id, updated_at')
-                        .eq('user_id', uid)
+                        .select('id, name, folder_id, updated_at').eq('user_id', uid)
                         .order('updated_at', { ascending: false })
                 ])
-
                 if (cancelled) return
                 if (foldersRes.data) setFolders(foldersRes.data)
                 if (boardsRes.data) setBoards(boardsRes.data)
             } catch (err) {
-                console.error('[InspirationPage] Failed to load data:', err)
+                console.error('[InspirationPage]', err)
             } finally {
                 if (!cancelled) setIsLoading(false)
             }
         }
-
         fetchData()
-        // No auth listeners — the middleware handles unauthenticated access.
-        // Auth listeners were causing spurious SIGNED_OUT events in React Strict Mode
-        // that redirected the user while they were actively using the canvas.
         return () => { cancelled = true }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleCreateFolder = async (name: string) => {
         const { data, error } = await supabase.from('document_folders')
-            .insert({ user_id: userId, name, type: 'inspiration' })
-            .select().single()
+            .insert({ user_id: userId, name, type: 'inspiration' }).select().single()
         if (error) { toast.error('Failed to create folder'); return }
         if (data) { setFolders(prev => [data, ...prev]); toast.success('Folder created!') }
     }
@@ -104,11 +85,9 @@ export default function InspirationPage() {
     const handleCreateBoard = async () => {
         if (!newBoardName.trim() || !activeFolderId) return
         const targetFolderId = activeFolderId === 'all' ? null : activeFolderId
-
-        const { data, error } = await supabase.from('inspiration_boards').insert({
-            user_id: userId, folder_id: targetFolderId, name: newBoardName.trim()
-        }).select('id, name, folder_id, updated_at').single()
-
+        const { data, error } = await supabase.from('inspiration_boards')
+            .insert({ user_id: userId, folder_id: targetFolderId, name: newBoardName.trim() })
+            .select('id, name, folder_id, updated_at').single()
         if (error) { toast.error('Failed to create board'); return }
         if (data) { setBoards(prev => [data, ...prev]); setNewBoardName(''); toast.success('Board created!') }
     }
@@ -118,8 +97,12 @@ export default function InspirationPage() {
         const { error } = await supabase.from('inspiration_boards').delete().eq('id', boardId)
         if (error) { toast.error('Failed to delete board'); return }
         setBoards(prev => prev.filter(b => b.id !== boardId))
-        if (activeBoard?.id === boardId) setActiveBoard(null)
         toast.success('Board deleted')
+    }
+
+    // Open board on its own isolated route — no parent state changes can kill it
+    const openBoard = (boardId: string) => {
+        router.push(`/dashboard/inspiration/${boardId}`)
     }
 
     const getItemCount = (folderId: string) => boards.filter(b => b.folder_id === folderId).length
@@ -131,147 +114,100 @@ export default function InspirationPage() {
         : folders.find(f => f.id === activeFolderId)?.name
 
     return (
-        <>
-            {/*
-             * Canvas Overlay — rendered as a fixed full-screen layer.
-             * activeBoard drives visibility. The overlay is only MOUNTED when a board
-             * is selected; it stays mounted until the user clicks Back.
-             * Tldraw is safe because we are NOT doing conditional tree-swapping —
-             * the parent page layout always stays mounted beneath it.
-             */}
-            {activeBoard && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        zIndex: 9999,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        backgroundColor: 'var(--background)',
-                    }}
-                >
-                    {/* Board header bar */}
-                    <div className="h-14 border-b border-border/50 bg-background/90 backdrop-blur flex items-center gap-3 px-4 shrink-0">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setActiveBoard(null)}
-                            className="h-8 w-8"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </Button>
-                        <span className="font-semibold text-foreground">{activeBoard.name}</span>
-                    </div>
+        <DashboardLayout>
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {activeFolderId ? activeFolderName : 'Inspiration Boards'}
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        {activeFolderId
+                            ? 'Infinite canvas for your ideas, moodboards, and wireframes.'
+                            : 'Organize your creative vision into folders.'}
+                    </p>
+                </div>
 
-                    {/* Canvas area */}
-                    <div style={{ flex: 1, position: 'relative' }}>
-                        {userId ? (
-                            <InspirationCanvas boardId={activeBoard.id} userId={userId} />
+                {isLoading ? (
+                    <div className="animate-pulse flex gap-4">
+                        <div className="w-32 h-32 bg-secondary rounded-xl" />
+                        <div className="w-32 h-32 bg-secondary rounded-xl" />
+                    </div>
+                ) : !activeFolderId ? (
+                    <DocumentFolders
+                        folders={folders}
+                        type="inspiration"
+                        onFolderClick={setActiveFolderId}
+                        onCreateFolder={handleCreateFolder}
+                        getItemCount={getItemCount}
+                        onDeleteFolder={handleDeleteFolder}
+                        onRenameFolder={handleRenameFolder}
+                    />
+                ) : (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <Button
+                                variant="ghost"
+                                className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+                                onClick={() => setActiveFolderId(null)}
+                            >
+                                <ChevronLeft className="w-4 h-4" /> Back to Folders
+                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    placeholder="New board name..."
+                                    value={newBoardName}
+                                    onChange={e => setNewBoardName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
+                                    className="w-48 h-9"
+                                />
+                                <Button onClick={handleCreateBoard} disabled={!newBoardName.trim()} className="h-9 gap-2">
+                                    <Plus className="w-4 h-4" /> Create Board
+                                </Button>
+                            </div>
+                        </div>
+
+                        {displayedBoards.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-secondary/20">
+                                <LayoutGrid className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
+                                <h3 className="text-lg font-medium">No boards here</h3>
+                                <p className="text-sm text-muted-foreground mt-1 text-center max-w-sm">
+                                    Create a board to start dropping inspiration and ideas.
+                                </p>
+                            </div>
                         ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {displayedBoards.map(board => (
+                                    <div
+                                        key={board.id}
+                                        onClick={() => openBoard(board.id)}
+                                        className="group cursor-pointer relative bg-card border border-border/50 rounded-2xl p-5 hover:border-primary/50 hover:shadow-md transition-all flex flex-col aspect-video justify-between"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                                <LayoutGrid className="w-5 h-5" />
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={(e) => handleDeleteBoard(e, board.id)}
+                                                className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-foreground truncate">{board.name}</h4>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Updated {new Date(board.updated_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* Standard page layout — always mounted */}
-            <DashboardLayout>
-                <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                            {activeFolderId ? activeFolderName : 'Inspiration Boards'}
-                        </h1>
-                        <p className="text-muted-foreground mt-1">
-                            {activeFolderId
-                                ? 'Infinite canvas for your ideas, moodboards, and wireframes.'
-                                : 'Organize your creative vision into folders.'}
-                        </p>
-                    </div>
-
-                    {isLoading ? (
-                        <div className="animate-pulse flex gap-4">
-                            <div className="w-32 h-32 bg-secondary rounded-xl" />
-                            <div className="w-32 h-32 bg-secondary rounded-xl" />
-                        </div>
-                    ) : !activeFolderId ? (
-                        <DocumentFolders
-                            folders={folders}
-                            type="inspiration"
-                            onFolderClick={setActiveFolderId}
-                            onCreateFolder={handleCreateFolder}
-                            getItemCount={getItemCount}
-                            onDeleteFolder={handleDeleteFolder}
-                            onRenameFolder={handleRenameFolder}
-                        />
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <Button
-                                    variant="ghost"
-                                    className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setActiveFolderId(null)}
-                                >
-                                    <ChevronLeft className="w-4 h-4" /> Back to Folders
-                                </Button>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        placeholder="New board name..."
-                                        value={newBoardName}
-                                        onChange={e => setNewBoardName(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
-                                        className="w-48 h-9"
-                                    />
-                                    <Button onClick={handleCreateBoard} disabled={!newBoardName.trim()} className="h-9 gap-2">
-                                        <Plus className="w-4 h-4" /> Create Board
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {displayedBoards.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-secondary/20">
-                                    <LayoutGrid className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
-                                    <h3 className="text-lg font-medium">No boards here</h3>
-                                    <p className="text-sm text-muted-foreground mt-1 text-center max-w-sm">
-                                        Create a board to start dropping inspiration and ideas.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {displayedBoards.map(board => (
-                                        <div
-                                            key={board.id}
-                                            onClick={() => setActiveBoard(board)}
-                                            className="group cursor-pointer relative bg-card border border-border/50 rounded-2xl p-5 hover:border-primary/50 hover:shadow-md transition-all flex flex-col aspect-video justify-between"
-                                        >
-                                            <div className="flex items-start justify-between">
-                                                <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                                                    <LayoutGrid className="w-5 h-5" />
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={(e) => handleDeleteBoard(e, board.id)}
-                                                    className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold text-foreground truncate">{board.name}</h4>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    Updated {new Date(board.updated_at).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </DashboardLayout>
-        </>
+                )}
+            </div>
+        </DashboardLayout>
     )
 }
