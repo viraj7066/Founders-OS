@@ -22,11 +22,12 @@ interface Props {
     boardId: string
     userId: string
     boardName: string
+    initialSnapshot: any
 }
 
 // This component receives server-validated userId/boardId/boardName as props.
 // No client-side auth checks needed — the server page already verified the session.
-export function BoardCanvas({ boardId, userId, boardName }: Props) {
+export function BoardCanvas({ boardId, userId, boardName, initialSnapshot }: Props) {
     const router = useRouter()
 
     return (
@@ -67,7 +68,7 @@ export function BoardCanvas({ boardId, userId, boardName }: Props) {
 
             {/* Canvas — always renders since auth was verified server-side */}
             <div style={{ flex: 1, position: 'relative' }}>
-                <InspirationCanvas boardId={boardId} userId={userId} />
+                <InspirationCanvas boardId={boardId} userId={userId} initialSnapshot={initialSnapshot} />
             </div>
         </div>
     )

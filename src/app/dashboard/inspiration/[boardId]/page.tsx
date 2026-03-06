@@ -24,7 +24,7 @@ export default async function BoardPage({ params }: Props) {
         } else {
             const { data: board, error: boardError } = await supabase
                 .from('inspiration_boards')
-                .select('name')
+                .select('name, canvas_state')
                 .eq('id', boardId)
                 .eq('user_id', user.id)
                 .single()
@@ -40,6 +40,7 @@ export default async function BoardPage({ params }: Props) {
                         boardId={boardId}
                         userId={user.id}
                         boardName={board.name}
+                        initialSnapshot={board.canvas_state?.store || null}
                     />
                 )
             }

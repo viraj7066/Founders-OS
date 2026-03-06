@@ -38,11 +38,26 @@ class CanvasErrorBoundary extends Component<
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────────────
-export function InspirationCanvas({ boardId, userId }: { boardId: string; userId: string }) {
-    // ⚡ Store created SYNCHRONOUSLY — never changes reference after mount.
-    // This means Tldraw never receives a new store prop, preventing mid-session crashes.
-    const [store] = useState(() => createTLStore({ shapeUtils: defaultShapeUtils }))
-    const [isLoadingData, setIsLoadingData] = useState(true)
+interface InspirationCanvasProps {
+    boardId: string
+    userId: string
+    initialSnapshot?: any
+}
+
+export function InspirationCanvas({ boardId, userId, initialSnapshot }: InspirationCanvasProps) {
+    // ⚡ Store created SYNCHRONOUSLY — with initial data if available.
+    // This ensuring Tldraw starts with the correct state on the very first frame.
+    const [store] = useState(() => {
+        const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
+        if (initialSnapshot) {
+            try {
+                loadSnapshot(freshStore, initialSnapshot)
+            } catch (err) {
+                console.error('[InspirationCanvas] Failed to load initial snapshot:', err)
+            }
+        }
+        return freshStore
+    })
 
     const supabaseRef = useRef(createClient())
     const editorRef = useRef<Editor | null>(null)
@@ -54,41 +69,6 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
         mountedRef.current = true
         return () => { mountedRef.current = false }
     }, [])
-
-    // Load saved canvas data into the already-created store
-    useEffect(() => {
-        let cancelled = false
-
-        async function loadData() {
-            try {
-                const { data } = await supabaseRef.current
-                    .from('inspiration_boards')
-                    .select('canvas_state')
-                    .eq('id', boardId)
-                    .single()
-
-                if (cancelled) return
-
-                if (data?.canvas_state?.store) {
-                    try {
-                        // Load into existing store — no store reference change, no Tldraw remount
-                        loadSnapshot(store, data.canvas_state.store)
-                    } catch {
-                        console.warn('[InspirationCanvas] Bad snapshot, using empty board.')
-                    }
-                }
-            } catch (err) {
-                console.error('[InspirationCanvas] Load error:', err)
-            } finally {
-                if (!cancelled && mountedRef.current) {
-                    setIsLoadingData(false)
-                }
-            }
-        }
-
-        loadData()
-        return () => { cancelled = true }
-    }, [boardId, store])
 
     function handleMount(editor: Editor) {
         editorRef.current = editor
@@ -115,7 +95,7 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
                 } catch (err) {
                     console.error('[InspirationCanvas] Auto-save failed:', err)
                 }
-            }, 1500)
+            }, 1000) // Slightly faster debounce for better feel
         }, { scope: 'document' })
 
         // Image upload handler
@@ -153,25 +133,12 @@ export function InspirationCanvas({ boardId, userId }: { boardId: string; userId
     return (
         <div className="absolute inset-0">
             <CanvasErrorBoundary>
-                {/*
-                 * Tldraw is ALWAYS mounted from the first render.
-                 * The store reference never changes — we mutate the store's data
-                 * (via loadSnapshot) without ever changing the React prop.
-                 * This prevents Tldraw from unmounting on Vercel when async data loads.
+                {/* 
+                 * Tldraw is always pre-loaded with your data. 
+                 * No mid-session "blank screen" transitions.
                  */}
                 <Tldraw store={store} onMount={handleMount} autoFocus />
             </CanvasErrorBoundary>
-
-            {/* Loading overlay sits ON TOP of Tldraw while data fetches — no unmount/remount */}
-            {isLoadingData && (
-                <div
-                    className="absolute inset-0 flex flex-col items-center justify-center bg-background z-[100]"
-                    style={{ pointerEvents: 'all' }}
-                >
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-xs font-medium text-muted-foreground">Preparing canvas…</p>
-                </div>
-            )}
         </div>
     )
 }
