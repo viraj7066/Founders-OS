@@ -81,8 +81,39 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         }
     }, [])
 
+    // Force-remove dark mode from Tldraw's scope by stripping the class from our wrapper
+    // and overriding Tldraw's CSS variables
+    useEffect(() => {
+        // Force the tldraw container to light mode regardless of global theme
+        const el = document.querySelector('.tl-container') as HTMLElement | null
+        if (el) {
+            el.classList.remove('dark')
+            el.dataset.theme = 'light'
+        }
+    })
+
     return (
-        <div style={{ position: 'absolute', inset: 0, background: '#ffffff' }}>
+        <div
+            className="light"
+            data-theme="light"
+            style={{
+                position: 'absolute',
+                inset: 0,
+                background: '#ffffff',
+                colorScheme: 'light',
+            }}
+        >
+            <style>{`
+                /* Force Tldraw to always render in light mode */
+                .tl-container {
+                    color-scheme: light !important;
+                    --color-background: #fbfcfe !important;
+                    --color-text-0: #2c3036 !important;
+                }
+                .tl-container .dark {
+                    --color-background: #fbfcfe !important;
+                }
+            `}</style>
             <Tldraw
                 snapshot={frozenSnapshot}
                 onMount={handleMount}
