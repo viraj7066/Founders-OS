@@ -66,11 +66,11 @@ export function BoardCanvas({ boardId, userId, boardName, initialSnapshot }: Pro
                     variant="ghost"
                     size="icon"
                     onClick={() => router.back()}
-                    className="h-8 w-8"
+                    className="h-8 w-8 text-black hover:bg-gray-100"
                 >
                     <ChevronLeft className="w-5 h-5" />
                 </Button>
-                <span className="font-semibold text-foreground">{boardName}</span>
+                <span className="font-semibold text-black">{boardName} <span className="text-gray-400 font-normal ml-2">Moodboard</span></span>
             </div>
 
             {/* Canvas */}

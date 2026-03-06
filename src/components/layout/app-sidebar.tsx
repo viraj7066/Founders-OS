@@ -65,7 +65,7 @@ const navGroups = [
         items: [
             { title: "Content Calendar", url: "/dashboard/content", icon: CalendarDays },
             { title: "Asset Vault", url: "/dashboard/vault", icon: FolderOpen },
-            { title: "Inspiration Board", url: "/dashboard/inspiration", icon: Lightbulb },
+            { title: "Moodboard", url: "/dashboard/inspiration", icon: Lightbulb },
         ]
     },
 ]

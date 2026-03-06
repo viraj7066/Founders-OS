@@ -117,17 +117,46 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
                     box-sizing: border-box;
                 }
 
-                /* 4. Force white background so it doesn't inherit dark mode transparents */
+                /* 4. Force white background and dark text (ignore global dark mode) */
+                .excalidraw-wrapper .excalidraw,
                 .excalidraw-wrapper .excalidraw-container {
+                    --canvas-background-default: #ffffff !important;
+                    --bg-color-main: #ffffff !important;
+                    --text-color-primary: #1a1a1a !important;
+                    --icon-fill-color: #1a1a1a !important;
                     background-color: #ffffff !important;
                     color: #1a1a1a !important;
+                }
+                
+                .excalidraw-wrapper .excalidraw.theme--dark {
+                     --bg-color-main: #ffffff !important;
+                     --canvas-background-default: #ffffff !important;
+                     --text-color-primary: #1a1a1a !important;
                 }
             `}</style>
 
             <Excalidraw
-                initialData={excalidrawInitialData || undefined}
+                initialData={{
+                    ...excalidrawInitialData,
+                    appState: {
+                        ...(excalidrawInitialData?.appState || {}),
+                        viewBackgroundColor: '#ffffff',
+                        theme: 'light',
+                        zenModeEnabled: false,
+                        gridSize: 20
+                    }
+                }}
                 onChange={handleChange}
                 theme="light"
+                UIOptions={{
+                    canvasActions: {
+                        changeViewBackgroundColor: true,
+                        clearCanvas: true,
+                        loadScene: false,
+                        export: { saveFileToDisk: true },
+                        toggleTheme: false, // Force light theme only
+                    },
+                }}
             />
         </div>
     )
