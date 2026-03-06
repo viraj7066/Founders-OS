@@ -1,0 +1,253 @@
+
+> tmp-app@0.1.0 lint
+> eslint
+
+
+A:\Founders OS\src\app\api\test-outreach\route.ts
+  19:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+A:\Founders OS\src\app\auth\signout\route.ts
+  4:28  warning  'request' is defined but never used  @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\app\dashboard\clients\page.tsx
+  18:39  warning  'clientsError' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\app\dashboard\contracts\page.tsx
+  18:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\app\dashboard\inspiration\[boardId]\page.tsx
+  60:13  error  Do not use an `<a>` element to navigate to `/dashboard/inspiration/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+A:\Founders OS\src\app\dashboard\invoices\page.tsx
+  18:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\app\dashboard\pipeline\page.tsx
+  18:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\app\dashboard\settings\page.tsx
+  11:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\app\login\login-form.tsx
+  44:23  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  70:89  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\components\clients\client-list.tsx
+  5:29  warning  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  5:46  warning  'CardHeader' is defined but never used       @typescript-eslint/no-unused-vars
+  5:58  warning  'CardTitle' is defined but never used        @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\components\content\content-calendar-dashboard.tsx
+    4:16   warning  'CardContent' is defined but never used                          @typescript-eslint/no-unused-vars
+    7:10   warning  'Badge' is defined but never used                                @typescript-eslint/no-unused-vars
+   12:27   warning  'Eye' is defined but never used                                  @typescript-eslint/no-unused-vars
+   12:32   warning  'Heart' is defined but never used                                @typescript-eslint/no-unused-vars
+   12:39   warning  'MessageCircle' is defined but never used                        @typescript-eslint/no-unused-vars
+   12:54   warning  'Bookmark' is defined but never used                             @typescript-eslint/no-unused-vars
+   13:32   warning  'LayoutGrid' is defined but never used                           @typescript-eslint/no-unused-vars
+   20:49   warning  'isSameDay' is defined but never used                            @typescript-eslint/no-unused-vars
+   44:19   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   90:12   warning  'addDefaultDate' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  258:62   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  412:54   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  432:109  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  432:135  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  447:103  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\components\contracts\contract-generator.tsx
+  177:24   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  298:49   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  307:120  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  307:139  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+A:\Founders OS\src\components\crm\kanban-board.tsx
+   19:24  warning  'AlertTriangle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   40:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+A:\Founders OS\src\components\crm\kanban-board.tsx:40:9
+  38 |
+  39 |     useEffect(() => {
+> 40 |         setIsMounted(true)
+     |         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  41 |     }, [])
+  42 |
+  43 |  react-hooks/set-state-in-effect
+   66:37  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   70:36  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  113:35  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\components\crm\kanban-card.tsx
+  5:16  warning  'CardContent' is defined but never used  @typescript-eslint/no-unused-vars
+  5:29  warning  'CardHeader' is defined but never used   @typescript-eslint/no-unused-vars
+  5:41  warning  'CardTitle' is defined but never used    @typescript-eslint/no-unused-vars
+  7:21  warning  'DollarSign' is defined but never used   @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\components\dashboard\daily-action-tracker.tsx
+  28:12  warning  'userId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  31:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  34:60  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\components\dashboard\dashboard-metrics.tsx
+  1:10  warning  'ArrowUpRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\components\dashboard\home-dashboard.tsx
+   10:38  warning  'TrendingUp' is defined but never used                           @typescript-eslint/no-unused-vars
+   12:45  warning  'Eye' is defined but never used                                  @typescript-eslint/no-unused-vars
+   12:50  warning  'Star' is defined but never used                                 @typescript-eslint/no-unused-vars
+   13:10  warning  'BarChart3' is defined but never used                            @typescript-eslint/no-unused-vars
+   13:27  warning  'ArrowUpRight' is defined but never used                         @typescript-eslint/no-unused-vars
+   13:41  warning  'Rocket' is defined but never used                               @typescript-eslint/no-unused-vars
+   22:18  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   23:16  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   24:23  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   25:18  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   26:16  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   27:18  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   28:18  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   71:63  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  159:11  warning  'sparklineData1' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  161:11  warning  'sparklineData3' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  167:11  warning  'kpis' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+  379:37  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  379:44  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  415:92  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\components\dashboard\life-goals.tsx
+  152:131  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  152:139  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  203:45   error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  203:91   error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\components\deliverables\deliverable-list.tsx
+   11:10   warning  'Badge' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   35:26   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   60:67   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   70:9    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+A:\Founders OS\src\components\deliverables\deliverable-list.tsx:70:9
+  68 |             assignedTo: d.assigned_to || ''
+  69 |         }))
+> 70 |         setTasks(mapped)
+     |         ^^^^^^^^ Avoid calling setState() directly within an effect
+  71 |     }, [initialDeliverables])
+  72 |
+  73 |     const filteredTasks = useMemo(() => {  react-hooks/set-state-in-effect
+  251:71   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+  462:109  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/no-unescaped-entities
+  462:131  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/no-unescaped-entities
+
+A:\Founders OS\src\components\financials\financial-overview.tsx
+   22:18  warning  'parseISO' is defined but never used                             @typescript-eslint/no-unused-vars
+  286:73  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  314:73  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  464:56  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  501:77  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  501:99  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\components\invoices\invoice-generator.tsx
+   10:73   warning  'FolderOpen' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   31:54   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   35:110  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  209:24   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  355:49   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  364:120  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  364:139  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+A:\Founders OS\src\components\layout\app-sidebar.tsx
+  14:5  warning  'SidebarProvider' is defined but never used  @typescript-eslint/no-unused-vars
+
+A:\Founders OS\src\components\outreach\outreach-dashboard.tsx
+   21:24  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   29:23  warning  'setFollowups' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   29:48  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  100:48  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  101:48  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  122:48  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  123:48  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  180:40  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  414:89  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  426:89  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\components\settings\settings-panel.tsx
+    4:10  warning  'Card' is defined but never used                                 @typescript-eslint/no-unused-vars
+    4:16  warning  'CardContent' is defined but never used                          @typescript-eslint/no-unused-vars
+    4:29  warning  'CardHeader' is defined but never used                           @typescript-eslint/no-unused-vars
+    4:41  warning  'CardTitle' is defined but never used                            @typescript-eslint/no-unused-vars
+    4:52  warning  'CardDescription' is defined but never used                      @typescript-eslint/no-unused-vars
+   11:41  warning  'CreditCard' is defined but never used                           @typescript-eslint/no-unused-vars
+   12:28  warning  'Link' is defined but never used                                 @typescript-eslint/no-unused-vars
+   12:65  warning  'Sun' is defined but never used                                  @typescript-eslint/no-unused-vars
+  146:92  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\components\team\team-dashboard.tsx
+    4:52   warning  'CardFooter' is defined but never used           @typescript-eslint/no-unused-vars
+   32:21   error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  105:21   warning  'user_id' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  105:30   warning  'created_at' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  172:155  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  284:95   error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+A:\Founders OS\src\components\ui\connection-status.tsx
+  27:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+A:\Founders OS\src\components\ui\connection-status.tsx:27:9
+  25 |
+  26 |         // Set initial state
+> 27 |         setIsOnline(navigator.onLine)
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  28 |
+  29 |         window.addEventListener('online', handleOnline)
+  30 |         window.addEventListener('offline', handleOffline)  react-hooks/set-state-in-effect
+
+A:\Founders OS\src\components\ui\sidebar.tsx
+  611:26  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+A:\Founders OS\src\components\ui\sidebar.tsx:611:26
+  609 |   // Random width between 50 to 90%.
+  610 |   const width = React.useMemo(() => {
+> 611 |     return `${Math.floor(Math.random() * 40) + 50}%`
+      |                          ^^^^^^^^^^^^^ Cannot call impure function
+  612 |   }, [])
+  613 |
+  614 |   return (  react-hooks/purity
+
+A:\Founders OS\src\components\vault\ip-vault-dashboard.tsx
+    9:36   warning  'MessageSquareDashed' is defined but never used                  @typescript-eslint/no-unused-vars
+    9:66   warning  'ImageIcon' is defined but never used                            @typescript-eslint/no-unused-vars
+    9:77   warning  'FileText' is defined but never used                             @typescript-eslint/no-unused-vars
+    9:162  warning  'FolderX' is defined but never used                              @typescript-eslint/no-unused-vars
+   20:16   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   34:21   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  561:109  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  561:137  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+A:\Founders OS\src\lib\supabase\retry.ts
+  15:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 132 problems (80 errors, 52 warnings)
+

@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 interface InspirationCanvasProps {
     boardId: string
     userId: string
-    initialSnapshot?: any
+    initialSnapshot?: unknown
 }
 
 export function InspirationCanvas({ boardId, userId, initialSnapshot }: InspirationCanvasProps) {

@@ -31,7 +31,7 @@ interface Props {
     boardId: string
     userId: string
     boardName: string
-    initialSnapshot: any
+    initialSnapshot: unknown
 }
 
 export function BoardCanvas({ boardId, userId, boardName, initialSnapshot }: Props) {
