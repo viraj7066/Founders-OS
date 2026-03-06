@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react'
-import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils, TLStore } from '@tldraw/tldraw'
+import React, { useState, useEffect, useRef } from 'react'
+import { Tldraw, getSnapshot, Editor, TLAssetId } from 'tldraw'
+import 'tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
@@ -92,37 +93,6 @@ const ASSET_URLS = {
     }
 }
 
-class CanvasErrorBoundary extends Component<
-    { children: ReactNode },
-    { hasError: boolean; message: string }
-> {
-    state = { hasError: false, message: '' }
-    static getDerivedStateFromError(error: Error) {
-        return { hasError: true, message: error?.message ?? 'Unknown crash' }
-    }
-    componentDidCatch(error: Error, info: ErrorInfo) {
-        console.error('[CanvasErrorBoundary]', error, info)
-    }
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#fff', color: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
-                    <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-                    <h2 style={{ fontSize: 20, marginBottom: 8 }}>Canvas Error</h2>
-                    <p style={{ color: '#555', fontSize: 14, marginBottom: 24, maxWidth: 350 }}>{this.state.message}</p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        style={{ padding: '10px 24px', background: '#000', color: '#fff', borderRadius: 8, border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                        Retry
-                    </button>
-                </div>
-            )
-        }
-        return this.props.children
-    }
-}
-
 interface InspirationCanvasProps {
     boardId: string
     userId: string
@@ -130,48 +100,15 @@ interface InspirationCanvasProps {
 }
 
 export function InspirationCanvas({ boardId, userId, initialSnapshot }: InspirationCanvasProps) {
-    const [store, setStore] = useState<TLStore | null>(null)
     const supabaseRef = useRef(createClient())
-    const editorRef = useRef<Editor | null>(null)
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const storeListenerRef = useRef<(() => void) | null>(null)
-    const mountedRef = useRef(true)
 
-    // Ensure we are in a clean browser environment before rendering anything
-    useEffect(() => {
-        mountedRef.current = true
-        return () => { mountedRef.current = false }
-    }, [])
-
-    // ⚡ CRITICAL FIX: Initialize TLStore inside a useEffect, NOT during render.
-    // Suspense or Strict Mode in Vercel causes renders to be interrupted and restarted.
-    // If createTLStore runs during an interrupted render, its internal state is corrupted.
-    useEffect(() => {
-        let isCancelled = false
-
-        // Provide a tiny delay to ensure React has fully committed the DOM
-        const timer = setTimeout(() => {
-            if (isCancelled) return
-            try {
-                const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
-                if (initialSnapshot) {
-                    loadSnapshot(freshStore, initialSnapshot)
-                }
-                setStore(freshStore)
-            } catch (err) {
-                console.error('[InspirationCanvas] Store creation failed:', err)
-            }
-        }, 50)
-
-        return () => {
-            isCancelled = true
-            clearTimeout(timer)
-        }
-    }, [initialSnapshot])
+    // STRICT CLIENT RENDER GUARD - Prevent hydration mismatch errors and Vercel dual-pass glitches
+    const [isMounted, setIsMounted] = useState(false)
+    useEffect(() => { setIsMounted(true) }, [])
 
     function handleMount(editor: Editor) {
-        editorRef.current = editor
-
         // Image upload handler
         editor.registerExternalAssetHandler('file', async ({ file }) => {
             try {
@@ -200,9 +137,8 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         storeListenerRef.current = editor.store.listen(() => {
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
             saveTimerRef.current = setTimeout(async () => {
-                if (!editorRef.current || !mountedRef.current) return
                 try {
-                    const snap = getSnapshot(editorRef.current.store)
+                    const snap = getSnapshot(editor.store)
                     await supabaseRef.current
                         .from('inspiration_boards')
                         .update({
@@ -224,31 +160,16 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         }
     }, [])
 
-    if (!store) {
-        // Fallback UI while store initializes via useEffect
-        return (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#fff]">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-[#000] border-t-transparent rounded-full animate-spin" />
-                </div>
-            </div>
-        )
-    }
+    if (!isMounted) return null
 
     return (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <CanvasErrorBoundary>
-                {/* 
-                 * FORCE LIGHT MODE: By omitting `inferDarkMode` entirely and not touching 
-                 * any dark mode internal APIs, Tldraw defaults to its native Light Theme.
-                 */}
-                <Tldraw
-                    store={store}
-                    onMount={handleMount}
-                    autoFocus
-                    assetUrls={ASSET_URLS}
-                />
-            </CanvasErrorBoundary>
+            <Tldraw
+                snapshot={initialSnapshot}
+                onMount={handleMount}
+                autoFocus
+                assetUrls={ASSET_URLS}
+            />
         </div>
     )
 }
