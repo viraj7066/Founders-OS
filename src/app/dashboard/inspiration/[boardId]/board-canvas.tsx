@@ -4,19 +4,7 @@ import React from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
-import dynamic from 'next/dynamic'
-
-// Load Tldraw only in browser
-const InspirationCanvas = dynamic(
-    () => import('@/components/inspiration/inspiration-canvas').then(m => m.InspirationCanvas),
-    {
-        ssr: false, loading: () => (
-            <div className="absolute inset-0 flex items-center justify-center bg-background">
-                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-        )
-    }
-)
+import { InspirationCanvas } from '@/components/inspiration/inspiration-canvas'
 
 interface Props {
     boardId: string

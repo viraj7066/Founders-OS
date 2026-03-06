@@ -1,8 +1,20 @@
 // SERVER COMPONENT — reads auth from cookies, passes userId to client canvas
 import { createClient } from '@/lib/supabase/server'
-import { BoardCanvas } from './board-canvas'
+import dynamic from 'next/dynamic'
 import { redirect } from 'next/navigation'
 import '@tldraw/tldraw/tldraw.css'
+
+const BoardCanvas = dynamic(
+    () => import('./board-canvas').then(mod => mod.BoardCanvas),
+    {
+        ssr: false,
+        loading: () => (
+            <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                <div style={{ width: 24, height: 24, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+        )
+    }
+)
 
 
 interface Props {
