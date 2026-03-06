@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react'
 import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils, TLStore } from '@tldraw/tldraw'
-import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 

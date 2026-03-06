@@ -2,6 +2,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { BoardCanvas } from './board-canvas'
 import { redirect } from 'next/navigation'
+import '@tldraw/tldraw/tldraw.css'
+
 
 interface Props {
     params: Promise<{ boardId: string }>
