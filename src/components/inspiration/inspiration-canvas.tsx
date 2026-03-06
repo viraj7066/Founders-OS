@@ -71,7 +71,40 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
     }, [])
 
     return (
-        <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+        <div
+            className="excalidraw-wrapper"
+            style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                // Excalidraw requires the container to have layout context
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            {/* 
+                CRITICAL FIX FOR TAILWIND: 
+                Tailwind's preflight forces `img, svg { display: block; vertical-align: middle; }` 
+                and `svg { height: auto; max-width: 100%; }`
+                This completely breaks Excalidraw's UI icons, making them massive.
+                We must explicitly revert SVG styles within the Excalidraw wrapper.
+            */}
+            <style>{`
+                .excalidraw-wrapper .excalidraw svg {
+                    display: inline-block;
+                    vertical-align: baseline;
+                    max-width: none;
+                    height: auto;
+                }
+                
+                /* Some Excalidraw toolbars compute height dynamically,
+                   Tailwind's max-width: 100% overrides their pixel widths */
+                .excalidraw-wrapper .excalidraw * {
+                    box-sizing: border-box;
+                }
+            `}</style>
+
             <Excalidraw
                 initialData={excalidrawInitialData || undefined}
                 onChange={handleChange}
