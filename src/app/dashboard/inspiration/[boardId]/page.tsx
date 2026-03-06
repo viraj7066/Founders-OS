@@ -1,21 +1,8 @@
 // SERVER COMPONENT — reads auth from cookies, passes userId to client canvas
 import { createClient } from '@/lib/supabase/server'
-import dynamic from 'next/dynamic'
+import { BoardCanvas } from './board-canvas'
 import { redirect } from 'next/navigation'
 import '@tldraw/tldraw/tldraw.css'
-
-const BoardCanvas = dynamic(
-    () => import('./board-canvas').then(mod => mod.BoardCanvas),
-    {
-        ssr: false,
-        loading: () => (
-            <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-                <div style={{ width: 24, height: 24, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            </div>
-        )
-    }
-)
-
 
 interface Props {
     params: Promise<{ boardId: string }>
@@ -63,8 +50,7 @@ export default async function BoardPage({ params }: Props) {
         debugReason = `EXCEPTION: ${e instanceof Error ? e.message : String(e)}`
     }
 
-    // If we get here, something went wrong — show debug screen instead of silent redirect
-    // This lets us see the EXACT reason on Vercel instead of guessing
+    // If we get here, something went wrong — show debug screen
     return (
         <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, fontFamily: 'monospace', zIndex: 9999 }}>
             <h1 style={{ fontSize: 24, marginBottom: 16, color: '#ff4444' }}>⚠ Canvas Load Debug</h1>
@@ -75,9 +61,6 @@ export default async function BoardPage({ params }: Props) {
             <a href="/dashboard/inspiration" style={{ padding: '8px 16px', background: '#333', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 14 }}>
                 ← Back to Boards
             </a>
-            <p style={{ marginTop: 16, fontSize: 12, color: '#555' }}>
-                This debug screen replaces the silent redirect. Share this error with your developer.
-            </p>
         </div>
     )
 }
