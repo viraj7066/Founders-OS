@@ -1,10 +1,100 @@
 'use client'
 
-import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react'
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode, useMemo } from 'react'
 import { Tldraw, getSnapshot, loadSnapshot, Editor, TLAssetId, createTLStore, defaultShapeUtils } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+// Official Tldraw assets from CDN (Version 4.4.0 matches package.json)
+// Using unpkg to ensure zero local asset-fetching failures on Vercel.
+const TLDRAW_VERSION = '4.4.0'
+const ASSET_URLS = {
+    fonts: {
+        monospace: `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/fonts/IBMPlexMono-Medium.woff2`,
+        sansSerif: `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/fonts/IBMPlexSans-Medium.woff2`,
+        serif: `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/fonts/IBMPlexSerif-Medium.woff2`,
+        draw: `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/fonts/ShantellSans-Normal-SemiBold.woff2`,
+    },
+    icons: {
+        'align-bottom': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-bottom.svg`,
+        'align-center-horizontal': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-center-horizontal.svg`,
+        'align-center-vertical': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-center-vertical.svg`,
+        'align-left': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-left.svg`,
+        'align-right': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-right.svg`,
+        'align-top': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/align-top.svg`,
+        'arrow-left': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/arrow-left.svg`,
+        'arrow-up': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/arrow-up.svg`,
+        'back': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/back.svg`,
+        'check': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/check.svg`,
+        'chevron-down': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/chevron-down.svg`,
+        'chevron-left': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/chevron-left.svg`,
+        'chevron-right': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/chevron-right.svg`,
+        'chevron-up': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/chevron-up.svg`,
+        'close': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/close.svg`,
+        'col-2': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/col-2.svg`,
+        'copy': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/copy.svg`,
+        'crosshair': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/crosshair.svg`,
+        'cursor': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/cursor.svg`,
+        'dag': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/dag.svg`,
+        'device-desktop': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/device-desktop.svg`,
+        'device-mobile': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/device-mobile.svg`,
+        'device-tablet': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/device-tablet.svg`,
+        'distribute-horizontal': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/distribute-horizontal.svg`,
+        'distribute-vertical': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/distribute-vertical.svg`,
+        'dot': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/dot.svg`,
+        'download': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/download.svg`,
+        'duplicate': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/duplicate.svg`,
+        'edit': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/edit.svg`,
+        'external-link': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/external-link.svg`,
+        'eye-closed': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/eye-closed.svg`,
+        'eye-open': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/eye-open.svg`,
+        'file': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/file.svg`,
+        'fill': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/fill.svg`,
+        'folder': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/folder.svg`,
+        'follow': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/follow.svg`,
+        'following': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/following.svg`,
+        'freeze': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/freeze.svg`,
+        'geo-arrow-down': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/geo-arrow-down.svg`,
+        'geo-arrow-left': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/geo-arrow-left.svg`,
+        'geo-arrow-right': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/geo-arrow-right.svg`,
+        'geo-arrow-up': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/geo-arrow-up.svg`,
+        'grid': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/grid.svg`,
+        'group': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/group.svg`,
+        'help': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/help.svg`,
+        'image': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/image.svg`,
+        'info': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/info.svg`,
+        'layers': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/layers.svg`,
+        'line': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/line.svg`,
+        'lock': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/lock.svg`,
+        'menu': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/menu.svg`,
+        'minus': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/minus.svg`,
+        'more': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/more.svg`,
+        'move': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/move.svg`,
+        'page': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/page.svg`,
+        'plus': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/plus.svg`,
+        'question': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/question.svg`,
+        'redo': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/redo.svg`,
+        'reset': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/reset.svg`,
+        'rotate-ccw': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/rotate-ccw.svg`,
+        'rotate-cw': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/rotate-cw.svg`,
+        'save': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/save.svg`,
+        'search': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/search.svg`,
+        'send': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/send.svg`,
+        'settings': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/settings.svg`,
+        'share': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/share.svg`,
+        'trash': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/trash.svg`,
+        'undo': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/undo.svg`,
+        'ungroup': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/ungroup.svg`,
+        'unlock': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/unlock.svg`,
+        'zoom-in': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/zoom-in.svg`,
+        'zoom-out': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/icons/icon/zoom-out.svg`,
+    },
+    animations: {
+        'background': `https://unpkg.com/@tldraw/assets@${TLDRAW_VERSION}/animations/background.webp`,
+    }
+}
 
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 class CanvasErrorBoundary extends Component<
@@ -13,22 +103,23 @@ class CanvasErrorBoundary extends Component<
 > {
     state = { hasError: false, message: '' }
     static getDerivedStateFromError(error: Error) {
-        return { hasError: true, message: error?.message ?? 'Unknown error' }
+        return { hasError: true, message: error?.message ?? 'Unknown crash' }
     }
     componentDidCatch(error: Error, info: ErrorInfo) {
-        console.error('[CanvasErrorBoundary]', error, info)
+        console.error('[CanvasErrorBoundary] CRITICAL:', error, info)
     }
     render() {
         if (this.state.hasError) {
             return (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-foreground p-8 gap-4">
-                    <p className="text-destructive font-semibold">Canvas Error</p>
-                    <p className="text-xs text-muted-foreground text-center max-w-xs">{this.state.message}</p>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
+                    <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+                    <h2 style={{ fontSize: 20, marginBottom: 8 }}>Canvas Error</h2>
+                    <p style={{ color: '#aaa', fontSize: 14, marginBottom: 24, maxWidth: 350 }}>{this.state.message}</p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
+                        style={{ padding: '10px 24px', background: '#fff', color: '#000', borderRadius: 8, border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
                     >
-                        Reload
+                        Retry Loading
                     </button>
                 </div>
             )
@@ -45,58 +136,36 @@ interface InspirationCanvasProps {
 }
 
 export function InspirationCanvas({ boardId, userId, initialSnapshot }: InspirationCanvasProps) {
-    // ⚡ Store created SYNCHRONOUSLY — with initial data if available.
-    // This ensuring Tldraw starts with the correct state on the very first frame.
-    const [store] = useState(() => {
-        const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
-        if (initialSnapshot) {
-            try {
-                loadSnapshot(freshStore, initialSnapshot)
-            } catch (err) {
-                console.error('[InspirationCanvas] Failed to load initial snapshot:', err)
-            }
-        }
-        return freshStore
-    })
-
+    const [isStrictlyClient, setIsStrictlyClient] = useState(false)
     const supabaseRef = useRef(createClient())
     const editorRef = useRef<Editor | null>(null)
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const storeListenerRef = useRef<(() => void) | null>(null)
     const mountedRef = useRef(true)
 
+    // Ensure we are in a clean browser environment before rendering anything
     useEffect(() => {
+        setIsStrictlyClient(true)
         mountedRef.current = true
         return () => { mountedRef.current = false }
     }, [])
 
+    // Stable store tied to initialSnapshot
+    const store = useMemo(() => {
+        if (typeof window === 'undefined') return undefined
+        const freshStore = createTLStore({ shapeUtils: defaultShapeUtils })
+        if (initialSnapshot) {
+            try {
+                loadSnapshot(freshStore, initialSnapshot)
+            } catch (err) {
+                console.error('[InspirationCanvas] Snapshot load failed:', err)
+            }
+        }
+        return freshStore
+    }, [initialSnapshot])
+
     function handleMount(editor: Editor) {
         editorRef.current = editor
-
-        // Clean up previous listener if any
-        if (storeListenerRef.current) {
-            storeListenerRef.current()
-        }
-
-        // Debounced auto-save — purely imperative, zero React state mutations
-        storeListenerRef.current = editor.store.listen(() => {
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-            saveTimerRef.current = setTimeout(async () => {
-                if (!editorRef.current || !mountedRef.current) return
-                try {
-                    const snap = getSnapshot(editorRef.current.store)
-                    await supabaseRef.current
-                        .from('inspiration_boards')
-                        .update({
-                            canvas_state: { store: snap },
-                            updated_at: new Date().toISOString(),
-                        })
-                        .eq('id', boardId)
-                } catch (err) {
-                    console.error('[InspirationCanvas] Auto-save failed:', err)
-                }
-            }, 1000) // Slightly faster debounce for better feel
-        }, { scope: 'document' })
 
         // Image upload handler
         editor.registerExternalAssetHandler('file', async ({ file }) => {
@@ -120,9 +189,29 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
                 throw err
             }
         })
+
+        // Auto-save logic
+        if (storeListenerRef.current) storeListenerRef.current()
+        storeListenerRef.current = editor.store.listen(() => {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+            saveTimerRef.current = setTimeout(async () => {
+                if (!editorRef.current || !mountedRef.current) return
+                try {
+                    const snap = getSnapshot(editorRef.current.store)
+                    await supabaseRef.current
+                        .from('inspiration_boards')
+                        .update({
+                            canvas_state: { store: snap },
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq('id', boardId)
+                } catch (err) {
+                    console.error('[InspirationCanvas] Auto-save error:', err)
+                }
+            }, 1000)
+        }, { scope: 'document' })
     }
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             storeListenerRef.current?.()
@@ -130,14 +219,27 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         }
     }, [])
 
+    if (!isStrictlyClient || !store) {
+        return (
+            <div className="absolute inset-0 flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-muted-foreground">Engine Readying...</p>
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div className="absolute inset-0">
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <CanvasErrorBoundary>
-                {/* 
-                 * Tldraw is always pre-loaded with your data. 
-                 * No mid-session "blank screen" transitions.
-                 */}
-                <Tldraw store={store} onMount={handleMount} autoFocus />
+                <Tldraw
+                    store={store}
+                    onMount={handleMount}
+                    autoFocus
+                    assetUrls={ASSET_URLS}
+                    inferDarkMode
+                />
             </CanvasErrorBoundary>
         </div>
     )
