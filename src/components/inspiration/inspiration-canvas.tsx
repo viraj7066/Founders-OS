@@ -106,6 +106,9 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
 
     // STRICT CLIENT RENDER GUARD - Prevent hydration mismatch errors and Vercel dual-pass glitches
     const [isMounted, setIsMounted] = useState(false)
+    // Freeze the snapshot reference so Next.js re-renders don't trigger a full Tldraw store reboot!
+    const [frozenSnapshot] = useState(initialSnapshot)
+
     useEffect(() => { setIsMounted(true) }, [])
 
     function handleMount(editor: Editor) {
@@ -165,7 +168,7 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
     return (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <Tldraw
-                snapshot={initialSnapshot}
+                snapshot={frozenSnapshot}
                 onMount={handleMount}
                 autoFocus
                 assetUrls={ASSET_URLS}

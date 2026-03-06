@@ -25,6 +25,8 @@ interface Props {
     initialSnapshot: any
 }
 
+import { CanvasErrorBoundary } from '@/components/inspiration/canvas-error-boundary'
+
 // This component receives server-validated userId/boardId/boardName as props.
 // No client-side auth checks needed — the server page already verified the session.
 export function BoardCanvas({ boardId, userId, boardName, initialSnapshot }: Props) {
@@ -68,7 +70,9 @@ export function BoardCanvas({ boardId, userId, boardName, initialSnapshot }: Pro
 
             {/* Canvas — always renders since auth was verified server-side */}
             <div style={{ flex: 1, position: 'relative' }}>
-                <InspirationCanvas boardId={boardId} userId={userId} initialSnapshot={initialSnapshot} />
+                <CanvasErrorBoundary>
+                    <InspirationCanvas boardId={boardId} userId={userId} initialSnapshot={initialSnapshot} />
+                </CanvasErrorBoundary>
             </div>
         </div>
     )
