@@ -1,8 +1,7 @@
 // SERVER COMPONENT — reads auth from cookies, passes userId to client canvas
-// No 'use client' — this runs on the server before anything reaches the browser
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BoardCanvas } from './board-canvas'
+import { redirect } from 'next/navigation'
 
 interface Props {
     params: Promise<{ boardId: string }>
@@ -11,32 +10,59 @@ interface Props {
 export default async function BoardPage({ params }: Props) {
     const { boardId } = await params
 
-    // Validate session server-side using cookies — zero client-side timing issues
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    let debugReason = ''
 
-    if (!user) {
-        redirect('/login')
+    try {
+        const supabase = await createClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError) {
+            debugReason = `AUTH_ERROR: ${authError.message}`
+        } else if (!user) {
+            debugReason = 'NO_USER: session not found'
+            redirect('/login')
+        } else {
+            const { data: board, error: boardError } = await supabase
+                .from('inspiration_boards')
+                .select('name')
+                .eq('id', boardId)
+                .eq('user_id', user.id)
+                .single()
+
+            if (boardError) {
+                debugReason = `BOARD_ERROR: ${boardError.message} (code: ${boardError.code})`
+            } else if (!board) {
+                debugReason = `BOARD_NOT_FOUND: boardId=${boardId} userId=${user.id}`
+            } else {
+                // SUCCESS — render canvas
+                return (
+                    <BoardCanvas
+                        boardId={boardId}
+                        userId={user.id}
+                        boardName={board.name}
+                    />
+                )
+            }
+        }
+    } catch (e: unknown) {
+        debugReason = `EXCEPTION: ${e instanceof Error ? e.message : String(e)}`
     }
 
-    // Fetch board name server-side too
-    const { data: board } = await supabase
-        .from('inspiration_boards')
-        .select('name')
-        .eq('id', boardId)
-        .eq('user_id', user.id)
-        .single()
-
-    if (!board) {
-        redirect('/dashboard/inspiration')
-    }
-
-    // Pass stable, server-validated data to the client canvas component
+    // If we get here, something went wrong — show debug screen instead of silent redirect
+    // This lets us see the EXACT reason on Vercel instead of guessing
     return (
-        <BoardCanvas
-            boardId={boardId}
-            userId={user.id}
-            boardName={board.name}
-        />
+        <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, fontFamily: 'monospace', zIndex: 9999 }}>
+            <h1 style={{ fontSize: 24, marginBottom: 16, color: '#ff4444' }}>⚠ Canvas Load Debug</h1>
+            <p style={{ fontSize: 14, marginBottom: 8, color: '#aaa' }}>boardId: {boardId}</p>
+            <div style={{ background: '#1a1a1a', padding: 16, borderRadius: 8, maxWidth: 600, width: '100%', marginBottom: 24 }}>
+                <p style={{ fontSize: 14, color: '#ff8800', wordBreak: 'break-all' }}>{debugReason || 'Unknown failure reason'}</p>
+            </div>
+            <a href="/dashboard/inspiration" style={{ padding: '8px 16px', background: '#333', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 14 }}>
+                ← Back to Boards
+            </a>
+            <p style={{ marginTop: 16, fontSize: 12, color: '#555' }}>
+                This debug screen replaces the silent redirect. Share this error with your developer.
+            </p>
+        </div>
     )
 }
