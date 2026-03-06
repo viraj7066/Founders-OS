@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import { Tldraw, getSnapshot, Editor, TLAssetId } from 'tldraw'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { Tldraw, getSnapshot, Editor, TLAssetId, createTLStore, loadSnapshot } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -104,10 +104,22 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const storeListenerRef = useRef<(() => void) | null>(null)
 
-    // STRICT CLIENT RENDER GUARD - Prevent hydration mismatch errors and Vercel dual-pass glitches
+    // Ensure we only run init on the client exactly once
     const [isMounted, setIsMounted] = useState(false)
-    // Freeze the snapshot reference so Next.js re-renders don't trigger a full Tldraw store reboot!
-    const [frozenSnapshot] = useState(initialSnapshot)
+
+    // Manually control the Tldraw Store engine! This fully decouples the data blob from the React
+    // render payload sequence, structurally destroying the Vercel "blanks out after 3 seconds" unmount bug.
+    const [store] = useState(() => {
+        const newStore = createTLStore()
+        if (initialSnapshot) {
+            try {
+                loadSnapshot(newStore, initialSnapshot)
+            } catch (err) {
+                console.error("Failed to parse initial snapshot payload", err)
+            }
+        }
+        return newStore
+    })
 
     useEffect(() => { setIsMounted(true) }, [])
 
@@ -135,31 +147,41 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
             }
         })
 
-        // Auto-save logic
+        // Auto-save logic - isolated from React render cycle
         if (storeListenerRef.current) storeListenerRef.current()
-        storeListenerRef.current = editor.store.listen(() => {
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-            saveTimerRef.current = setTimeout(async () => {
-                try {
-                    const snap = getSnapshot(editor.store)
-                    await supabaseRef.current
-                        .from('inspiration_boards')
-                        .update({
-                            canvas_state: { store: snap },
-                            updated_at: new Date().toISOString(),
-                        })
-                        .eq('id', boardId)
-                } catch (err) {
-                    console.error('[InspirationCanvas] Auto-save error:', err)
+        storeListenerRef.current = editor.store.listen(
+            (update) => {
+                // Only trigger save on actual document content changes, not simple selection/camera moves
+                if (update.changes.added || update.changes.updated || update.changes.removed) {
+                    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+                    saveTimerRef.current = setTimeout(async () => {
+                        try {
+                            const snap = getSnapshot(editor.store)
+                            await supabaseRef.current
+                                .from('inspiration_boards')
+                                .update({
+                                    canvas_state: { store: snap },
+                                    updated_at: new Date().toISOString(),
+                                })
+                                .eq('id', boardId)
+                        } catch (err) {
+                            console.error('[InspirationCanvas] Auto-save error:', err)
+                        }
+                    }, 2000) // Exteded debounce to 2s to prevent rapid-fire API hits
                 }
-            }, 1000)
-        }, { scope: 'document' })
+            },
+            { source: 'user', scope: 'document' } // Strictly track user-initiated document edits!
+        )
     }
 
     useEffect(() => {
         return () => {
-            storeListenerRef.current?.()
-            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+            if (storeListenerRef.current) {
+                storeListenerRef.current()
+            }
+            if (saveTimerRef.current) {
+                clearTimeout(saveTimerRef.current)
+            }
         }
     }, [])
 
@@ -168,7 +190,7 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
     return (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <Tldraw
-                snapshot={frozenSnapshot}
+                store={store}
                 onMount={handleMount}
                 autoFocus
                 assetUrls={ASSET_URLS}
