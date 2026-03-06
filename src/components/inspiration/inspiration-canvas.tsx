@@ -107,10 +107,8 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
             className="light tldraw-v3-wrapper"
             data-theme="light"
             style={{
-                position: 'fixed',
+                position: 'absolute',
                 inset: 0,
-                width: '100vw',
-                height: '100vh',
                 zIndex: 0,
             }}
         >
@@ -126,6 +124,10 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
                     color-scheme: light !important;
                     background-color: #fbfcfe !important;
                     --color-background: #fbfcfe !important;
+                }
+                /* Push UI widgets down slightly from the header and edges */
+                .tldraw-v3-wrapper .tl-ui-layout {
+                    padding: 8px !important;
                 }
             `}</style>
             <Tldraw
