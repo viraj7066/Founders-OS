@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Tldraw, getSnapshot, Editor, TLAssetId, createTLStore, loadSnapshot } from 'tldraw'
+import { Tldraw, getSnapshot, Editor, TLAssetId } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -16,23 +16,10 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
     const supabaseRef = useRef(createClient())
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const storeListenerRef = useRef<(() => void) | null>(null)
+    const mountedRef = useRef(true)
 
-    // Create store ONCE on first render, outside React lifecycle
-    const [store] = useState(() => {
-        const s = createTLStore()
-        if (initialSnapshot) {
-            try {
-                loadSnapshot(s, initialSnapshot)
-            } catch (e) {
-                console.error('Failed to load snapshot:', e)
-            }
-        }
-        return s
-    })
-
-    // Client-side mount guard
-    const [ready, setReady] = useState(false)
-    useEffect(() => { setReady(true) }, [])
+    // Freeze snapshot reference to prevent Tldraw store recreation
+    const [frozenSnapshot] = useState(() => initialSnapshot || undefined)
 
     const handleMount = useCallback((editor: Editor) => {
         // Image upload handler
@@ -58,12 +45,14 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
             }
         })
 
-        // Auto-save on user document changes only, 3s debounce
+        // Auto-save — only fires on user-initiated document changes
         if (storeListenerRef.current) storeListenerRef.current()
         storeListenerRef.current = editor.store.listen(
             () => {
+                if (!mountedRef.current) return
                 if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
                 saveTimerRef.current = setTimeout(async () => {
+                    if (!mountedRef.current) return
                     try {
                         const snap = getSnapshot(editor.store)
                         await supabaseRef.current
@@ -82,20 +71,20 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         )
     }, [boardId, userId])
 
-    // Cleanup on unmount
+    // Cleanup
     useEffect(() => {
+        mountedRef.current = true
         return () => {
+            mountedRef.current = false
             storeListenerRef.current?.()
             if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         }
     }, [])
 
-    if (!ready) return null
-
     return (
-        <div style={{ position: 'absolute', inset: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, background: '#ffffff' }}>
             <Tldraw
-                store={store}
+                snapshot={frozenSnapshot}
                 onMount={handleMount}
                 autoFocus
             />
