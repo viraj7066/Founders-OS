@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
+import '@excalidraw/excalidraw/index.css'
 import { createClient } from '@/lib/supabase/client'
 
 interface InspirationCanvasProps {
@@ -74,34 +75,52 @@ export function InspirationCanvas({ boardId, userId, initialSnapshot }: Inspirat
         <div
             className="excalidraw-wrapper"
             style={{
-                position: 'absolute',
+                position: 'fixed',
                 inset: 0,
-                width: '100%',
-                height: '100%',
-                // Excalidraw requires the container to have layout context
+                width: '100vw',
+                height: '100vh',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                zIndex: 0,
             }}
         >
             {/* 
-                CRITICAL FIX FOR TAILWIND: 
-                Tailwind's preflight forces `img, svg { display: block; vertical-align: middle; }` 
-                and `svg { height: auto; max-width: 100%; }`
-                This completely breaks Excalidraw's UI icons, making them massive.
-                We must explicitly revert SVG styles within the Excalidraw wrapper.
+                COMPREHENSIVE TAILWIND PREFLIGHT RESET
+                Tailwind globally breaks third-party UI libraries by aggressively styled:
+                - svgs (massively scaled up)
+                - buttons (removes backgrounds/borders)
+                - box-sizing
+                We must forcefully revert these inside the Excalidraw container.
             */}
             <style>{`
+                /* 1. Fix massive SVG icons */
                 .excalidraw-wrapper .excalidraw svg {
-                    display: inline-block;
-                    vertical-align: baseline;
-                    max-width: none;
-                    height: auto;
+                    display: inline-block !important;
+                    vertical-align: baseline !important;
+                    max-width: none !important;
+                    height: auto !important;
                 }
                 
-                /* Some Excalidraw toolbars compute height dynamically,
-                   Tailwind's max-width: 100% overrides their pixel widths */
+                /* 2. Fix transparent/invisible buttons and inputs */
+                .excalidraw-wrapper .excalidraw button,
+                .excalidraw-wrapper .excalidraw input,
+                .excalidraw-wrapper .excalidraw select {
+                    background-color: transparent;
+                    border-width: auto;
+                    border-style: solid;
+                    border-color: initial;
+                    padding: initial;
+                }
+
+                /* 3. Ensure panels compute correct heights */
                 .excalidraw-wrapper .excalidraw * {
                     box-sizing: border-box;
+                }
+
+                /* 4. Force white background so it doesn't inherit dark mode transparents */
+                .excalidraw-wrapper .excalidraw-container {
+                    background-color: #ffffff !important;
+                    color: #1a1a1a !important;
                 }
             `}</style>
 
