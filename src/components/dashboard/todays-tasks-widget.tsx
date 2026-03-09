@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Task } from '@/types/tasks'
-import { CheckCircle2, Circle, Clock, ArrowRight } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, ArrowRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { isPast, parseISO } from 'date-fns'
+import { TaskModal } from '../tasks/task-modal'
 
 interface Props {
     userId: string
@@ -18,6 +19,7 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
     const supabase = createClient()
     const [tasks, setTasks] = useState<Task[]>([])
     const [loading, setLoading] = useState(true)
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
     useEffect(() => {
         fetchTodayTasks()
@@ -54,12 +56,19 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                 return false
             })
 
-            // Sort: Incomplete first, then by priority High -> Low
+            // Sort: Incomplete first, then by priority High -> Low, then newest first
             const priorityScore: Record<string, number> = { 'High': 3, 'Medium': 2, 'Low': 1 }
             todayTasks.sort((a, b) => {
                 if (a.column_id === 'Done' && b.column_id !== 'Done') return 1
                 if (a.column_id !== 'Done' && b.column_id === 'Done') return -1
-                return priorityScore[b.priority] - priorityScore[a.priority]
+
+                // If both are same completion status, sort by priority
+                if (priorityScore[b.priority] !== priorityScore[a.priority]) {
+                    return priorityScore[b.priority] - priorityScore[a.priority]
+                }
+
+                // If priorities match, sort by newest created first
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             })
 
             setTasks(todayTasks)
@@ -106,7 +115,17 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between p-4 lg:p-5 border-b border-border/50">
                 <div>
-                    <h3 className="text-sm font-semibold text-foreground">Today's Tasks</h3>
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        Today's Tasks
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10 rounded-full"
+                            onClick={() => setIsCreateModalOpen(true)}
+                        >
+                            <Plus className="w-4 h-4" />
+                        </Button>
+                    </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Synced live from Kanban board</p>
                 </div>
                 <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
@@ -198,6 +217,33 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                     </div>
                 )}
             </div>
+
+            {isCreateModalOpen && (
+                <TaskModal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                    userId={userId}
+                    setTasks={setTasks}
+                    task={{
+                        id: crypto.randomUUID(),
+                        user_id: userId,
+                        title: '',
+                        description: null,
+                        priority: 'Medium',
+                        due_date: new Date().toISOString().split('T')[0], // Default to today
+                        time_estimate: null,
+                        tags: [],
+                        subtasks: [],
+                        is_recurring: false,
+                        recurring_frequency: null,
+                        notes: null,
+                        column_id: 'Today', // Ensure it lands in Today
+                        completed_at: null,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    } as Task}
+                />
+            )}
         </div>
     )
 }

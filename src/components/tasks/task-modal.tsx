@@ -58,7 +58,7 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
         const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
         const finalFreq = isRecurring ? (recurringFreq === 'Custom' ? customFreq : recurringFreq) : null
 
-        const updates: Partial<Task> = {
+        const taskData: Partial<Task> = {
             title: title.trim(),
             description: description.trim() || null,
             priority,
@@ -73,18 +73,40 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
         }
 
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .update(updates)
-                .eq('id', task.id)
+            // Check if we are creating a new task or updating an existing one
+            // We can determine this by checking if the task ID already exists in the current state
+            // (Passed from TodaysTasksWidget as a completely new UUID that hasn't been saved yet)
+            let isNew = false
+            setTasks(prev => {
+                isNew = !prev.some(t => t.id === task.id)
+                return prev
+            })
 
-            if (error) throw error
+            if (isNew) {
+                // Insert new
+                const newTaskData = {
+                    ...taskData,
+                    id: task.id,
+                    user_id: userId,
+                    column_id: task.column_id, // e.g. 'Today'
+                    created_at: new Date().toISOString(),
+                }
+                const { error } = await supabase.from('tasks').insert(newTaskData)
+                if (error) throw error
+                // Optimistically add to state
+                setTasks(prev => [{ ...(newTaskData as Task), subtasks: subtasks }, ...prev])
+                toast.success('Task created successfully')
+            } else {
+                // Update existing
+                const { error } = await supabase.from('tasks').update(taskData).eq('id', task.id)
+                if (error) throw error
+                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...taskData } : t))
+                toast.success('Task updated successfully')
+            }
 
-            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updates } : t))
-            toast.success('Task updated successfully')
             onClose()
         } catch (error: any) {
-            toast.error('Failed to update task: ' + error.message)
+            toast.error('Failed to save task: ' + error.message)
         } finally {
             setIsSaving(false)
         }
