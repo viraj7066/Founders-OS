@@ -13,6 +13,7 @@ import {
     Zap, BarChart3, Bell, ArrowUpRight, Rocket
 } from 'lucide-react'
 import { LifeGoals } from './life-goals'
+import { TodaysTasksWidget } from './todays-tasks-widget'
 import { format, parseISO, isBefore, isAfter, addDays } from 'date-fns'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { toast } from 'sonner'
@@ -46,20 +47,11 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
         const hour = now.getHours()
         setGreeting(hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening')
 
-        const loadFocus = async () => {
+        const loadUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            const uid = user?.id || '00000000-0000-0000-0000-000000000000'
-            setUserId(uid)
-            const { data } = await supabase
-                .from('focus_tasks')
-                .select('*')
-                .eq('user_id', uid)
-                .order('created_at', { ascending: true })
-            if (data) {
-                setFocusList(data.map(t => ({ id: t.id, text: t.text, completed: Boolean(t.completed) })))
-            }
+            setUserId(user?.id || '00000000-0000-0000-0000-000000000000')
         }
-        loadFocus()
+        loadUser()
 
         // Fetch all-time total earnings from paid invoices
         const fetchEarnings = async () => {
@@ -90,51 +82,6 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
     const totalMRR = clients.reduce((s, c) => s + (c.mrr || 0), 0)
     const now = new Date()
     const sevenDaysFromNow = addDays(now, 7)
-
-    const addTask = async () => {
-        if (!newTask.trim()) return
-        const uid = userId || '00000000-0000-0000-0000-000000000000'
-
-        const { data, error } = await supabase
-            .from('focus_tasks')
-            .insert({ user_id: uid, text: newTask.trim(), completed: false })
-            .select()
-            .single()
-
-        if (!error && data) {
-            setFocusList(prev => [...prev, { id: data.id, text: data.text, completed: data.completed }])
-            setNewTask('')
-        } else {
-            console.error('Task addition error:', error)
-            toast.error('Failed to add task: ' + (error?.message || 'Check if you ran the fixed SQL'))
-        }
-    }
-
-    const toggleTask = async (id: string, currentStatus: boolean) => {
-        const { error } = await supabase
-            .from('focus_tasks')
-            .update({ completed: !currentStatus })
-            .eq('id', id)
-
-        if (!error) {
-            setFocusList(prev => prev.map(t => t.id === id ? { ...t, completed: !currentStatus } : t))
-        } else {
-            toast.error('Toggle failed')
-        }
-    }
-
-    const deleteTask = async (id: string) => {
-        const { error } = await supabase
-            .from('focus_tasks')
-            .delete()
-            .eq('id', id)
-
-        if (!error) {
-            setFocusList(prev => prev.filter(t => t.id !== id))
-        } else {
-            toast.error('Delete failed')
-        }
-    }
 
     // Remaining KPIs (activeClients and totalMRR computed above)
     const atRiskClients = clients.filter(c => c.status === 'at-risk' || c.status === 'at_risk').length
@@ -404,65 +351,8 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
 
             {/* ─── Bottom 2-col Layout ─── */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Today's Focus — full to-do list synced with Daily Tracker */}
-                <div className="lg:col-span-2 flex flex-col rounded-2xl border border-white/8 bg-card overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-                        <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Target className="w-3.5 h-3.5 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-semibold text-foreground">Today's Focus</h3>
-                                <p className="text-[10px] text-muted-foreground">{completedTasks}/{focusList.length} tasks done</p>
-                            </div>
-                        </div>
-                        {focusList.length > 0 && (
-                            <div className="text-[10px] text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full">
-                                {Math.round((completedTasks / focusList.length) * 100)}% complete
-                            </div>
-                        )}
-                    </div>
-                    {/* Progress bar */}
-                    {focusList.length > 0 && (
-                        <div className="h-1 bg-secondary">
-                            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(completedTasks / focusList.length) * 100}%` }} />
-                        </div>
-                    )}
-                    <div className="flex-1 p-4 space-y-2 overflow-y-auto max-h-80 custom-scrollbar">
-                        {focusList.length === 0 ? (
-                            <div className="py-8 text-center text-xs text-muted-foreground">
-                                <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                Add your priorities for today
-                            </div>
-                        ) : (
-                            focusList.map(task => (
-                                <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-secondary/30 transition-colors group/task">
-                                    <button onClick={() => toggleTask(task.id, task.completed)}
-                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${task.completed ? 'bg-primary border-primary' : 'border-border hover:border-primary/50'}`}>
-                                        {task.completed && <CheckCircle2 className="w-3 h-3 text-primary-foreground fill-current" />}
-                                    </button>
-                                    <span className={`flex-1 text-sm transition-all ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.text}</span>
-                                    <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover/task:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="p-3 border-t border-white/5 bg-secondary/10">
-                        <div className="flex gap-2">
-                            <Input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()}
-                                placeholder="Add a task..." className="bg-background/50 border-white/8 text-sm h-8" />
-                            <Button onClick={addTask} size="icon" className="h-8 w-8 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90">
-                                <Plus className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                            <Link href="/dashboard/tracker" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                                Full Tracker <ArrowRight className="w-2.5 h-2.5" />
-                            </Link>
-                        </div>
-                    </div>
+                <div className="lg:col-span-2">
+                    <TodaysTasksWidget userId={userId || ''} />
                 </div>
 
                 {/* Life Goals Section */}

@@ -288,7 +288,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
 
             <div className="bg-card rounded-xl shadow-sm border border-border/50 p-4 pt-6">
                 {!isMounted ? null : (
-                    <DndContext
+                    <DndContext id="dnd-crm-pipeline"
                         sensors={sensors}
                         collisionDetection={closestCorners}
                         onDragStart={handleDragStart}

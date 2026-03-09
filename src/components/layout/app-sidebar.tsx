@@ -29,7 +29,9 @@ import {
     FileText,
     Briefcase,
     LogOut,
-    Lightbulb
+    Lightbulb,
+    CalendarCheck,
+    GraduationCap
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -40,6 +42,7 @@ const navGroups = [
         items: [
             { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
             { title: "Daily Tracker", url: "/dashboard/tracker", icon: Target },
+            { title: "Task Calendar", url: "/dashboard/calendar", icon: CalendarCheck },
         ]
     },
     {
@@ -51,6 +54,7 @@ const navGroups = [
             { title: "Invoices", url: "/dashboard/invoices", icon: FileText },
             { title: "Contracts", url: "/dashboard/contracts", icon: Briefcase },
             { title: "Outreach", url: "/dashboard/outreach", icon: MessageSquareShare },
+            { title: "Skills Tracker", url: "/dashboard/skills", icon: GraduationCap },
         ]
     },
     {

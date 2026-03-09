@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { toast } from 'sonner'
 import { format, subDays } from 'date-fns'
+import { TodaysTasksWidget } from './todays-tasks-widget'
 
 const PLATFORMS = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, target: 20, color: 'text-pink-500' },
@@ -218,54 +219,10 @@ export function DailyActionTracker() {
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {/* Today's Focus */}
-            <Card className="col-span-full lg:col-span-1 shadow-sm border-border group flex flex-col">
-                <CardHeader className="pb-3 relative">
-                    <CardTitle className="flex items-center gap-2 text-lg text-foreground tracking-tight">
-                        <Target className="h-5 w-5 text-primary" />
-                        Today&apos;s Focus
-                    </CardTitle>
-                    <CardDescription>Your primary objective for the day</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col flex-1">
-                    <div className="flex gap-2 mb-4">
-                        <Input
-                            value={focus}
-                            onChange={(e) => setFocus(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddFocus()}
-                            className="bg-secondary/50 border-border text-foreground text-sm focus:ring-primary placeholder-muted-foreground placeholder:text-xs transition-all"
-                            placeholder="Add a new task..."
-                        />
-                        <Button onClick={handleAddFocus} size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0">
-                            <Plus className="h-4 w-4 text-primary-foreground" />
-                        </Button>
-                    </div>
-                    <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                        {focusList.map((item) => (
-                            <div key={item.id} className="flex items-start gap-3 group/item">
-                                <Checkbox
-                                    id={`focus-${item.id}`}
-                                    checked={item.completed}
-                                    onCheckedChange={() => toggleFocusItem(item.id, item.completed)}
-                                    className="mt-1 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                />
-                                <label
-                                    htmlFor={`focus-${item.id}`}
-                                    className={`text-sm font-medium leading-tight cursor-pointer transition-all duration-300 flex-1 ${item.completed ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'}`}
-                                >
-                                    {item.text}
-                                </label>
-                                <button onClick={() => deleteFocusItem(item.id)} className="opacity-0 group-hover/item:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        ))}
-                        {focusList.length === 0 && (
-                            <div className="text-center text-sm text-muted-foreground py-6">No tasks yet. Add one above!</div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Today's Kanban Tasks */}
+            <div className="col-span-full lg:col-span-1 border-none shadow-none bg-transparent">
+                <TodaysTasksWidget userId={userId} className="h-[600px] border border-border shadow-sm" />
+            </div>
 
             {/* Outreach Volume */}
             <Card className="col-span-full lg:col-span-2 shadow-sm border-border flex flex-col">
