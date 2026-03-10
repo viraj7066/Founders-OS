@@ -26,7 +26,9 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
     const [title, setTitle] = useState(task.title)
     const [description, setDescription] = useState(task.description || '')
     const [priority, setPriority] = useState(task.priority)
-    const [dueDate, setDueDate] = useState(task.due_date || '')
+    const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split('T')[0] : '')
+    const [startTime, setStartTime] = useState(task.start_time || '')
+    const [endTime, setEndTime] = useState(task.end_time || '')
     const [timeEstimate, setTimeEstimate] = useState(task.time_estimate || '')
     const [tagsInput, setTagsInput] = useState(task.tags.join(', '))
     const [isRecurring, setIsRecurring] = useState(task.is_recurring)
@@ -62,7 +64,9 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
             title: title.trim(),
             description: description.trim() || null,
             priority,
-            due_date: dueDate || null,
+            due_date: dueDate ? new Date(dueDate).toISOString() : null,
+            start_time: startTime || null,
+            end_time: endTime || null,
             time_estimate: timeEstimate || null,
             tags,
             is_recurring: isRecurring,
@@ -153,6 +157,17 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
                         <div className="grid gap-2">
                             <Label>Due Date</Label>
                             <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Start Time</Label>
+                            <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>End Time</Label>
+                            <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { TaskCalendar } from "@/components/tasks/task-calendar"
+import { TaskCalendarModule } from "@/components/tasks/task-calendar-module"
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 export const metadata = {
@@ -39,7 +39,7 @@ export default async function CalendarPage() {
                     <p className="text-sm text-muted-foreground">Manage your sprint, track daily tasks, and maintain your streak.</p>
                 </div>
 
-                <TaskCalendar
+                <TaskCalendarModule
                     userId={user.id}
                     initialTasks={tasks || []}
                     initialStats={stats || null}

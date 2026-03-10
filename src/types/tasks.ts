@@ -15,6 +15,8 @@ export interface Task {
     description: string | null;
     priority: TaskPriority;
     due_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
     tags: string[];
     time_estimate: string | null;
     subtasks: Subtask[];
