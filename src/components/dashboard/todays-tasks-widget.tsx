@@ -44,15 +44,26 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
             .from('tasks')
             .select('*')
             .eq('user_id', userId)
-            .in('column_id', ['Today', 'Done'])
+            .in('column_id', ['Today', 'Done', 'Backlog'])
 
         if (data) {
-            // Only show tasks that are IN 'Today' OR were completed TODAY.
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+
+            // Only show tasks that are IN 'Today', were completed TODAY, or are OVERDUE in Backlog (pushed there by midnight worker)
             const todayTasks = data.filter(t => {
                 if (t.column_id === 'Today') return true
+
                 if (t.column_id === 'Done' && t.completed_at) {
                     return new Date(t.completed_at).toDateString() === new Date().toDateString()
                 }
+
+                if (t.column_id === 'Backlog' && t.due_date) {
+                    const due = new Date(t.due_date)
+                    due.setHours(0, 0, 0, 0)
+                    return due < today
+                }
+
                 return false
             })
 
@@ -192,10 +203,22 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                                             {task.title}
                                         </p>
 
-                                        <div className="flex items-center gap-2 mt-1">
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                                             <span className={`px-1.5 py-0 rounded text-[9px] font-bold uppercase tracking-wider border ${priorityColors[task.priority]}`}>
                                                 {task.priority}
                                             </span>
+
+                                            {isOverdue && (
+                                                <span className="px-1.5 py-0 rounded text-[9px] font-bold uppercase tracking-wider border bg-red-500/10 text-red-500 border-red-500/20">
+                                                    ⚠️ OVERDUE
+                                                </span>
+                                            )}
+
+                                            {isOverdue && task.due_date && (
+                                                <span className="px-1.5 py-0 rounded text-[9px] font-medium tracking-wider border bg-red-500/5 text-red-500/80 border-red-500/10" suppressHydrationWarning>
+                                                    Due: {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                </span>
+                                            )}
 
                                             {task.time_estimate && (
                                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -204,11 +227,6 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                                                 </div>
                                             )}
 
-                                            {isOverdue && (
-                                                <span className="text-[10px] font-semibold text-red-500">
-                                                    ⚠️ Overdue
-                                                </span>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -238,6 +256,8 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                         recurring_frequency: null,
                         notes: null,
                         column_id: 'Today', // Ensure it lands in Today
+                        start_time: null,
+                        end_time: null,
                         completed_at: null,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()

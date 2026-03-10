@@ -127,13 +127,18 @@ export function TaskCard({ task, isOverlay = false, setTasks, userId }: Props) {
                         {task.priority}
                     </span>
 
+                    {isOverdue && (
+                        <div className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 border border-red-500/20">
+                            <span>⚠️ Overdue</span>
+                        </div>
+                    )}
+
                     {task.due_date && (
                         <div className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md border 
-                        ${isOverdue ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-secondary text-muted-foreground border-border/50'}
+                        ${isOverdue ? 'bg-red-500/5 text-red-500/80 border-red-500/10' : 'bg-secondary text-muted-foreground border-border/50'}
                     `}>
                             <Calendar className="w-3 h-3" />
-                            <span suppressHydrationWarning>{new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                            {isOverdue && <span className="ml-0.5">⚠️</span>}
+                            <span suppressHydrationWarning>Due: {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                         </div>
                     )}
 

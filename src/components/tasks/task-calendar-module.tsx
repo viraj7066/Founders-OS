@@ -7,6 +7,7 @@ import { CalendarView } from './calendar-view'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { KanbanSquare, Calendar as CalendarIcon } from 'lucide-react'
+import { getColumnForDate } from '@/lib/utils/task-date'
 
 interface Props {
     userId: string
@@ -26,39 +27,30 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
     // Note: Our auto-regenerating recursive logic and Real-Time Sync is still independently handled 
     // inside task-calendar.tsx, but this outer layer does the "Midnight Rollover / App Start" column verification.
     useEffect(() => {
+        let lastDate = new Date().toDateString()
+
         const checkAppStartupState = async () => {
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const tomorrow = new Date(today)
-            tomorrow.setDate(tomorrow.getDate() + 1)
+            // Query fresh tasks from Supabase to ensure we have the latest state, especially for midnight rollover
+            const { data: tasksToEval } = await supabase
+                .from('tasks')
+                .select('id, column_id, due_date')
+                .eq('user_id', userId)
+                .neq('column_id', 'Done')
+
+            if (!tasksToEval) {
+                setIsCheckingStart(false)
+                return
+            }
 
             // Collect tasks that need moving
             const updatesToPush: { id: string, column_id: Task['column_id'] }[] = []
 
-            for (const task of initialTasks) {
-                if (task.column_id === 'Done' || !task.due_date) continue
+            for (const task of tasksToEval) {
+                if (!task.due_date) continue
 
-                const taskDate = new Date(task.due_date)
-                taskDate.setHours(0, 0, 0, 0)
+                const expectedColumn = getColumnForDate(task.due_date)
 
-                let expectedColumn: Task['column_id'] = task.column_id
-
-                if (taskDate.getTime() === today.getTime()) {
-                    expectedColumn = 'Today'
-                } else if (taskDate.getTime() === tomorrow.getTime()) {
-                    expectedColumn = 'Tomorrow'
-                } else if (taskDate > tomorrow) {
-                    const daysDiff = (taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                    if (daysDiff <= 7 && taskDate.getDay() !== 1) { // Basic Check for 'This Week'
-                        expectedColumn = 'This Week'
-                    } else {
-                        expectedColumn = 'Backlog'
-                    }
-                } else if (taskDate < today) {
-                    expectedColumn = 'Today' // Overdue forced to today
-                }
-
-                if (expectedColumn !== task.column_id) {
+                if (expectedColumn && expectedColumn !== task.column_id) {
                     updatesToPush.push({ id: task.id, column_id: expectedColumn })
                 }
             }
@@ -75,7 +67,19 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
         }
 
         checkAppStartupState()
-    }, [initialTasks, supabase])
+
+        // Midnight Rollover Watcher
+        const interval = setInterval(() => {
+            const currentDate = new Date().toDateString()
+            if (currentDate !== lastDate) {
+                lastDate = currentDate
+                console.log('Midnight rollover detected, reconciling tasks...')
+                checkAppStartupState()
+            }
+        }, 60000)
+
+        return () => clearInterval(interval)
+    }, [supabase, userId])
 
     if (isCheckingStart) {
         return (

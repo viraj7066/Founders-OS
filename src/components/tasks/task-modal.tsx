@@ -12,6 +12,7 @@ import { Task, Subtask } from '@/types/tasks'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { X, Plus, Trash2 } from 'lucide-react'
+import { getColumnForDate } from '@/lib/utils/task-date'
 
 interface Props {
     isOpen: boolean
@@ -76,6 +77,9 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
             updated_at: new Date().toISOString()
         }
 
+        const calculatedColumn = getColumnForDate(taskData.due_date || null)
+        const targetColumn = calculatedColumn || task.column_id
+
         try {
             // Check if we are creating a new task or updating an existing one
             // We can determine this by checking if the task ID already exists in the current state
@@ -92,7 +96,7 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
                     ...taskData,
                     id: task.id,
                     user_id: userId,
-                    column_id: task.column_id, // e.g. 'Today'
+                    column_id: targetColumn,
                     created_at: new Date().toISOString(),
                 }
                 const { error } = await supabase.from('tasks').insert(newTaskData)
@@ -102,9 +106,13 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
                 toast.success('Task created successfully')
             } else {
                 // Update existing
-                const { error } = await supabase.from('tasks').update(taskData).eq('id', task.id)
+                const updatePayload = {
+                    ...taskData,
+                    column_id: targetColumn
+                }
+                const { error } = await supabase.from('tasks').update(updatePayload).eq('id', task.id)
                 if (error) throw error
-                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...taskData } : t))
+                setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...updatePayload } : t))
                 toast.success('Task updated successfully')
             }
 
