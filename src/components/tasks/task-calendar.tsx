@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Task, TaskStats, TaskColumn as ColumnType } from '@/types/tasks'
+import { format } from 'date-fns'
 import { toast } from 'sonner'
 import {
     DndContext,
@@ -188,16 +189,16 @@ export function TaskCalendar({ userId, initialTasks, initialStats }: Props) {
         const now = new Date()
 
         if (toColumn === 'Today') {
-            newDueDate = now.toISOString().split('T')[0]
+            newDueDate = format(now, 'yyyy-MM-dd')
         } else if (toColumn === 'Tomorrow') {
             const tomorrow = new Date(now)
             tomorrow.setDate(tomorrow.getDate() + 1)
-            newDueDate = tomorrow.toISOString().split('T')[0]
+            newDueDate = format(tomorrow, 'yyyy-MM-dd')
         } else if (toColumn === 'This Week') {
             if (previousColumn === 'Today' || previousColumn === 'Tomorrow') {
                 const later = new Date(now)
                 later.setDate(later.getDate() + 2)
-                newDueDate = later.toISOString().split('T')[0]
+                newDueDate = format(later, 'yyyy-MM-dd')
             }
         } else if (toColumn === 'Backlog') {
             if (previousColumn === 'Today' || previousColumn === 'Tomorrow' || previousColumn === 'This Week') {

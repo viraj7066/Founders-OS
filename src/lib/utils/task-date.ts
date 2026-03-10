@@ -11,7 +11,13 @@ export function getColumnForDate(dueDate: string | Date | null): 'Today' | 'Tomo
     const weekEnd = new Date(today);
     weekEnd.setDate(today.getDate() + 7);
 
-    const due = new Date(dueDate);
+    let due: Date;
+    if (typeof dueDate === 'string') {
+        const cleanDate = dueDate.split('T')[0];
+        due = new Date(cleanDate + 'T00:00:00');
+    } else {
+        due = new Date(dueDate);
+    }
     due.setHours(0, 0, 0, 0);
 
     if (due.getTime() === today.getTime()) return 'Today';

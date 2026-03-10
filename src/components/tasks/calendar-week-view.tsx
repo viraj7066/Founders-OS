@@ -137,7 +137,7 @@ export function CalendarWeekView({ currentDate, currentTime, tasks, setTasks, us
             title: '',
             description: null,
             priority: 'Medium',
-            due_date: format(dragStart.day, 'yyyy-MM-dd') + 'T00:00:00.000Z',
+            due_date: format(dragStart.day, 'yyyy-MM-dd'),
             start_time: startT,
             end_time: endT,
             tags: [],

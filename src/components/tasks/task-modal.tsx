@@ -14,6 +14,8 @@ import { toast } from 'sonner'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { getColumnForDate } from '@/lib/utils/task-date'
 
+import { format } from 'date-fns'
+
 interface Props {
     isOpen: boolean
     onClose: () => void
@@ -65,7 +67,7 @@ export function TaskModal({ isOpen, onClose, task, userId, setTasks }: Props) {
             title: title.trim(),
             description: description.trim() || null,
             priority,
-            due_date: dueDate ? new Date(dueDate).toISOString() : null,
+            due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
             start_time: startTime || null,
             end_time: endTime || null,
             time_estimate: timeEstimate || null,

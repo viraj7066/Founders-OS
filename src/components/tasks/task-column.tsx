@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Task, TaskColumn as ColumnType } from '@/types/tasks'
+import { format } from 'date-fns'
 import { useDroppable } from '@dnd-kit/core'
 import { TaskCard } from './task-card'
 import { Button } from '@/components/ui/button'
@@ -36,15 +37,15 @@ export function TaskColumn({ id, title, tasks, userId, setTasks }: Props) {
         const now = new Date()
 
         if (id === 'Today') {
-            newDueDate = now.toISOString().split('T')[0]
+            newDueDate = format(now, 'yyyy-MM-dd')
         } else if (id === 'Tomorrow') {
             const tomorrow = new Date(now)
             tomorrow.setDate(tomorrow.getDate() + 1)
-            newDueDate = tomorrow.toISOString().split('T')[0]
+            newDueDate = format(tomorrow, 'yyyy-MM-dd')
         } else if (id === 'This Week') {
             const later = new Date(now)
             later.setDate(later.getDate() + 2)
-            newDueDate = later.toISOString().split('T')[0]
+            newDueDate = format(later, 'yyyy-MM-dd')
         }
 
         const newTask: Partial<Task> = {

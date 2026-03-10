@@ -248,7 +248,7 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                         title: '',
                         description: null,
                         priority: 'Medium',
-                        due_date: new Date().toISOString().split('T')[0], // Default to today
+                        due_date: new Date().toLocaleDateString('en-CA'), // Formats to local YYYY-MM-DD reliably
                         time_estimate: null,
                         tags: [],
                         subtasks: [],

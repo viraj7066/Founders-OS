@@ -131,7 +131,7 @@ export function CalendarDayView({ currentDate, currentTime, tasks, setTasks, use
             title: '',
             description: null,
             priority: 'Medium',
-            due_date: format(currentDate, 'yyyy-MM-dd') + 'T00:00:00.000Z',
+            due_date: format(currentDate, 'yyyy-MM-dd'),
             start_time: startT,
             end_time: endT,
             tags: [],

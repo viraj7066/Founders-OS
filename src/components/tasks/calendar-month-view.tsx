@@ -58,7 +58,7 @@ export function CalendarMonthView({ currentDate, tasks, setTasks, userId }: Prop
             title: '',
             description: null,
             priority: 'Medium',
-            due_date: format(date, 'yyyy-MM-dd') + 'T00:00:00.000Z',
+            due_date: format(date, 'yyyy-MM-dd'),
             start_time: null,
             end_time: null,
             tags: [],
