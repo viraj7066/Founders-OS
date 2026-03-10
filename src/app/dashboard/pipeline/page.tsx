@@ -3,6 +3,11 @@ import { KanbanBoard } from '@/components/crm/kanban-board'
 import { Lead } from '@/types/crm'
 import { createClient } from '@/lib/supabase/server'
 
+export const metadata = {
+  title: 'CRM Pipeline',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function PipelinePage() {
     const supabase = await createClient()

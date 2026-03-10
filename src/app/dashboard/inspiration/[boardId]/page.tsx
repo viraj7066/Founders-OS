@@ -3,6 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { BoardCanvas } from './board-canvas'
 import { redirect } from 'next/navigation'
 
+export async function generateMetadata({ params }: { params: Promise<{ boardId: string }> }) {
+    const { boardId } = await params;
+    const supabase = await createClient();
+    const { data } = await supabase.from('moodboards').select('name').eq('id', boardId).single();
+    return {
+        title: data?.name || 'Moodboard'
+    };
+}
+
+
 interface Props {
     params: Promise<{ boardId: string }>
 }

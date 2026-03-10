@@ -2,6 +2,11 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ContentCalendarDashboard } from '@/components/content/content-calendar-dashboard'
 import { createClient } from '@/lib/supabase/server'
 
+export const metadata = {
+  title: 'Content Calendar',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function ContentPage() {
     const supabase = await createClient()

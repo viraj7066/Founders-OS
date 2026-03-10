@@ -17,6 +17,9 @@ interface Props {
 export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props) {
     const supabase = createClient()
     const [activeTab, setActiveTab] = useState<'Kanban' | 'Calendar'>('Kanban')
+    useEffect(() => {
+        document.title = activeTab === 'Kanban' ? 'Task Calendar' : 'Calendar';
+    }, [activeTab]);
     const [isCheckingStart, setIsCheckingStart] = useState(true)
 
     // Startup Logic: Ensures dates and columns are strictly synced according to today's date

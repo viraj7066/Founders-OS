@@ -3,6 +3,11 @@ import { DeliverableList } from '@/components/deliverables/deliverable-list'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export const metadata = {
+  title: 'Deliverables',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function DeliverablesPage() {
     const supabase = await createClient()

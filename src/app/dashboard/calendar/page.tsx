@@ -4,8 +4,7 @@ import { TaskCalendarModule } from "@/components/tasks/task-calendar-module"
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 export const metadata = {
-    title: "Task Calendar | Venture Deck",
-    description: "Manage your tasks and schedule.",
+    title: 'Task Calendar',
 }
 
 export default async function CalendarPage() {

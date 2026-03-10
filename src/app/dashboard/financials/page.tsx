@@ -3,6 +3,11 @@ import { FinancialDashboard } from '@/components/financials/financial-overview'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export const metadata = {
+  title: 'Financials',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function FinancialsPage() {
     const supabase = await createClient()

@@ -3,6 +3,11 @@ import { IPVaultDashboard } from '@/components/vault/ip-vault-dashboard'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export const metadata = {
+  title: 'Vault',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function VaultPage() {
     const supabase = await createClient()

@@ -4,8 +4,7 @@ import { SkillsDashboard } from "@/components/skills/skills-dashboard"
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 export const metadata = {
-    title: "Skills Tracker | Venture Deck",
-    description: "Track your learning progress and mastery.",
+    title: 'Skills Tracker',
 }
 
 export default async function SkillsPage() {

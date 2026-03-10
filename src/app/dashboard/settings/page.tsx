@@ -2,8 +2,7 @@ import { SettingsPanel } from '@/components/settings/settings-panel'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata = {
-    title: 'Settings | Founders OS',
-    description: 'Manage your account settings, agency information, and preferences.',
+    title: 'Settings',
 }
 
 export const dynamic = 'force-dynamic'

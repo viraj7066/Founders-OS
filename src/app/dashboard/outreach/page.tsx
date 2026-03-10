@@ -3,6 +3,11 @@ import { OutreachDashboard } from '@/components/outreach/outreach-dashboard'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export const metadata = {
+  title: 'Outreach Tracking',
+}
+
+
 export const dynamic = 'force-dynamic'
 
 export default async function OutreachPage() {

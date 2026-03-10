@@ -2,6 +2,11 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { TeamDashboard } from '@/components/team/team-dashboard'
 import { createClient } from '@/lib/supabase/server'
 
+export const metadata = {
+  title: 'Team Directory',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function TeamPage() {
     const supabase = await createClient()

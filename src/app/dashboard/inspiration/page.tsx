@@ -18,6 +18,8 @@ interface Board {
 }
 
 export default function InspirationPage() {
+  useEffect(() => { document.title = 'Moodboard'; }, [])
+
     const router = useRouter()
     const supabaseRef = useRef(createClient())
     const supabase = supabaseRef.current

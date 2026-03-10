@@ -1,6 +1,11 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { DailyActionTracker } from '@/components/dashboard/daily-action-tracker'
 
+export const metadata = {
+  title: 'Daily Tracker',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default function TrackerPage() {
     return (

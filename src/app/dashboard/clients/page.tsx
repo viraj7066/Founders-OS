@@ -3,6 +3,11 @@ import { ClientList } from '@/components/clients/client-list'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+export const metadata = {
+  title: 'Client Management',
+}
+
+
 export const dynamic = 'force-dynamic'
 export default async function ClientsPage() {
     const supabase = await createClient()

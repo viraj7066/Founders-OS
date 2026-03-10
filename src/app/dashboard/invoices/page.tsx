@@ -11,6 +11,8 @@ import { toast } from 'sonner'
 
 export const dynamic = 'force-dynamic'
 export default function InvoicesPage() {
+  useEffect(() => { document.title = 'Invoices'; }, [])
+
     const supabase = createClient()
     const [userId, setUserId] = useState<string | null>(null)
 
