@@ -5,7 +5,8 @@ import { Task } from '@/types/tasks'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Calendar, Clock, Repeat, CheckSquare, Edit3, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
-import { isPast, parseISO } from 'date-fns'
+import { getTodayString, parseLocalDate } from '@/lib/utils/task-date'
+import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TaskModal } from './task-modal'
 import { createClient } from '@/lib/supabase/client'
@@ -39,7 +40,7 @@ export function TaskCard({ task, isOverlay = false, setTasks, userId }: Props) {
     const [showSubtasks, setShowSubtasks] = React.useState(false)
     const supabase = createClient()
 
-    const isOverdue = task.due_date ? isPast(parseISO(task.due_date)) && task.column_id !== 'Done' : false
+    const isOverdue = task.due_date ? task.due_date < getTodayString() && task.column_id !== 'Done' : false
     const isCompleted = task.column_id === 'Done'
 
     const handleCheck = async (checked: boolean) => {
@@ -138,7 +139,7 @@ export function TaskCard({ task, isOverlay = false, setTasks, userId }: Props) {
                         ${isOverdue ? 'bg-red-500/5 text-red-500/80 border-red-500/10' : 'bg-secondary text-muted-foreground border-border/50'}
                     `}>
                             <Calendar className="w-3 h-3" />
-                            <span suppressHydrationWarning>Due: {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            <span suppressHydrationWarning>{isOverdue ? '⚠️ Overdue' : `Due: ${format(parseLocalDate(task.due_date), 'MMM d')}`}</span>
                         </div>
                     )}
 

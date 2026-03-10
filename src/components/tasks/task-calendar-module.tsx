@@ -7,7 +7,7 @@ import { CalendarView } from './calendar-view'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { KanbanSquare, Calendar as CalendarIcon } from 'lucide-react'
-import { getColumnForDate } from '@/lib/utils/task-date'
+import { getColumnForDate, getTodayString } from '@/lib/utils/task-date'
 
 interface Props {
     userId: string
@@ -27,9 +27,16 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
     // Note: Our auto-regenerating recursive logic and Real-Time Sync is still independently handled 
     // inside task-calendar.tsx, but this outer layer does the "Midnight Rollover / App Start" column verification.
     useEffect(() => {
-        let lastDate = new Date().toDateString()
+        let lastDate = localStorage.getItem('lastReconciliationDate') || ''
+        const today = getTodayString()
 
+        // Only run logic heavily once per session per day to avoid conflicting states
         const checkAppStartupState = async () => {
+            if (lastDate === today) {
+                setIsCheckingStart(false)
+                return
+            }
+
             // Query fresh tasks from Supabase to ensure we have the latest state, especially for midnight rollover
             const { data: tasksToEval } = await supabase
                 .from('tasks')
@@ -50,7 +57,12 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
 
                 const expectedColumn = getColumnForDate(task.due_date)
 
-                if (expectedColumn && expectedColumn !== task.column_id) {
+                // Only touch columns that are canonically time-bound
+                if (
+                    expectedColumn &&
+                    expectedColumn !== task.column_id &&
+                    ['Today', 'Tomorrow', 'This Week', 'Backlog'].includes(expectedColumn)
+                ) {
                     updatesToPush.push({ id: task.id, column_id: expectedColumn })
                 }
             }
@@ -63,6 +75,8 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
                 }
             }
 
+            localStorage.setItem('lastReconciliationDate', getTodayString())
+            lastDate = getTodayString()
             setIsCheckingStart(false)
         }
 
@@ -70,9 +84,8 @@ export function TaskCalendarModule({ userId, initialTasks, initialStats }: Props
 
         // Midnight Rollover Watcher
         const interval = setInterval(() => {
-            const currentDate = new Date().toDateString()
+            const currentDate = getTodayString()
             if (currentDate !== lastDate) {
-                lastDate = currentDate
                 console.log('Midnight rollover detected, reconciling tasks...')
                 checkAppStartupState()
             }

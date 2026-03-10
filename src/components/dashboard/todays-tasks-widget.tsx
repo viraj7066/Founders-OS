@@ -7,7 +7,8 @@ import { CheckCircle2, Circle, Clock, ArrowRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { isPast, parseISO } from 'date-fns'
+import { format } from 'date-fns'
+import { getTodayString, parseLocalDate } from '@/lib/utils/task-date'
 import { TaskModal } from '../tasks/task-modal'
 
 interface Props {
@@ -59,9 +60,7 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                 }
 
                 if (t.column_id === 'Backlog' && t.due_date) {
-                    const due = new Date(t.due_date)
-                    due.setHours(0, 0, 0, 0)
-                    return due < today
+                    return t.due_date < getTodayString()
                 }
 
                 return false
@@ -174,7 +173,7 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
                     <div className="flex flex-col gap-1">
                         {tasks.map(task => {
                             const isDone = task.column_id === 'Done'
-                            const isOverdue = task.due_date ? isPast(parseISO(task.due_date)) && !isDone : false
+                            const isOverdue = task.due_date ? task.due_date < getTodayString() && !isDone : false
 
                             return (
                                 <div
@@ -216,7 +215,7 @@ export function TodaysTasksWidget({ userId, className = '' }: Props) {
 
                                             {isOverdue && task.due_date && (
                                                 <span className="px-1.5 py-0 rounded text-[9px] font-medium tracking-wider border bg-red-500/5 text-red-500/80 border-red-500/10" suppressHydrationWarning>
-                                                    Due: {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    Due: {format(parseLocalDate(task.due_date), 'MMM d')}
                                                 </span>
                                             )}
 

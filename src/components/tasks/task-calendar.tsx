@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Task, TaskStats, TaskColumn as ColumnType } from '@/types/tasks'
 import { format } from 'date-fns'
+import { parseLocalDate, getTodayString, getTomorrowString } from '@/lib/utils/task-date'
 import { toast } from 'sonner'
 import {
     DndContext,
@@ -301,11 +302,13 @@ export function TaskCalendar({ userId, initialTasks, initialStats }: Props) {
                         {visibleColumns.map(col => {
                             let displayTitle: string = col
                             if (col === 'Today') {
-                                displayTitle = `Today (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`
+                                displayTitle = `Today — ${format(parseLocalDate(getTodayString()), 'MMM d')}`
                             } else if (col === 'Tomorrow') {
-                                const tmrw = new Date()
-                                tmrw.setDate(tmrw.getDate() + 1)
-                                displayTitle = `Tomorrow (${tmrw.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`
+                                displayTitle = `Tomorrow — ${format(parseLocalDate(getTomorrowString()), 'MMM d')}`
+                            } else if (col === 'This Week') {
+                                const endOfWeek = new Date(parseLocalDate(getTodayString()));
+                                endOfWeek.setDate(endOfWeek.getDate() + 7);
+                                displayTitle = `This Week — ${format(parseLocalDate(getTodayString()), 'MMM d')}–${format(endOfWeek, 'MMM d')}`
                             }
                             return (
                                 <TaskColumn
