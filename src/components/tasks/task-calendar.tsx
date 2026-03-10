@@ -184,9 +184,30 @@ export function TaskCalendar({ userId, initialTasks, initialStats }: Props) {
         const isDone = toColumn === 'Done'
         const completedAt = isDone ? new Date().toISOString() : null
 
+        let newDueDate = task.due_date || null
+        const now = new Date()
+
+        if (toColumn === 'Today') {
+            newDueDate = now.toISOString().split('T')[0]
+        } else if (toColumn === 'Tomorrow') {
+            const tomorrow = new Date(now)
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            newDueDate = tomorrow.toISOString().split('T')[0]
+        } else if (toColumn === 'This Week') {
+            if (previousColumn === 'Today' || previousColumn === 'Tomorrow') {
+                const later = new Date(now)
+                later.setDate(later.getDate() + 2)
+                newDueDate = later.toISOString().split('T')[0]
+            }
+        } else if (toColumn === 'Backlog') {
+            if (previousColumn === 'Today' || previousColumn === 'Tomorrow' || previousColumn === 'This Week') {
+                newDueDate = null
+            }
+        }
+
         setTasks(prev => prev.map(t => {
             if (t.id === taskId) {
-                return { ...t, column_id: toColumn, completed_at: completedAt }
+                return { ...t, column_id: toColumn, due_date: newDueDate, completed_at: completedAt }
             }
             return t
         }))
@@ -197,6 +218,7 @@ export function TaskCalendar({ userId, initialTasks, initialStats }: Props) {
                 .from('tasks')
                 .update({
                     column_id: toColumn,
+                    due_date: newDueDate,
                     completed_at: completedAt,
                     updated_at: new Date().toISOString()
                 })
@@ -275,16 +297,26 @@ export function TaskCalendar({ userId, initialTasks, initialStats }: Props) {
                     onDragEnd={handleDragEnd}
                 >
                     <div className="flex h-full p-4 gap-4 w-max min-w-full">
-                        {visibleColumns.map(col => (
-                            <TaskColumn
-                                key={col}
-                                id={col}
-                                title={col}
-                                tasks={tasksByColumn[col]}
-                                userId={userId}
-                                setTasks={setTasks}
-                            />
-                        ))}
+                        {visibleColumns.map(col => {
+                            let displayTitle: string = col
+                            if (col === 'Today') {
+                                displayTitle = `Today (${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`
+                            } else if (col === 'Tomorrow') {
+                                const tmrw = new Date()
+                                tmrw.setDate(tmrw.getDate() + 1)
+                                displayTitle = `Tomorrow (${tmrw.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`
+                            }
+                            return (
+                                <TaskColumn
+                                    key={col}
+                                    id={col}
+                                    title={displayTitle}
+                                    tasks={tasksByColumn[col]}
+                                    userId={userId}
+                                    setTasks={setTasks}
+                                />
+                            )
+                        })}
                     </div>
 
                     <DragOverlay>

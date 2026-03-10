@@ -81,7 +81,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
 
     const activeClients = clients.filter(c => c.status === 'active').length
     const totalMRR = clients.reduce((s, c) => s + (c.mrr || 0), 0)
-    const wishlistSkillsCount = skills.filter(s => s.column_id === 'Wishlist').length
+    const wishlistSkillsCount = skills.filter(s => s.status === 'Wishlist').length
     const now = new Date()
     const sevenDaysFromNow = addDays(now, 7)
 

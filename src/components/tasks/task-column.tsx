@@ -32,11 +32,27 @@ export function TaskColumn({ id, title, tasks, userId, setTasks }: Props) {
             return
         }
 
+        let newDueDate: string | null = null
+        const now = new Date()
+
+        if (id === 'Today') {
+            newDueDate = now.toISOString().split('T')[0]
+        } else if (id === 'Tomorrow') {
+            const tomorrow = new Date(now)
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            newDueDate = tomorrow.toISOString().split('T')[0]
+        } else if (id === 'This Week') {
+            const later = new Date(now)
+            later.setDate(later.getDate() + 2)
+            newDueDate = later.toISOString().split('T')[0]
+        }
+
         const newTask: Partial<Task> = {
             user_id: userId,
             title: newTaskTitle.trim(),
             priority: newTaskPriority,
             column_id: id,
+            due_date: newDueDate,
             tags: [],
             subtasks: [],
             is_recurring: false,

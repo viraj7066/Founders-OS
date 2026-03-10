@@ -37,7 +37,7 @@ export default async function DashboardPage() {
         supabase.from('content_posts').select('id, title, status, platform, scheduled_date'),
         supabase.from('team_members').select('id, name, role, status, tasks_completed, tasks_assigned'),
         supabase.from('ai_prompts').select('id, title, category, is_proven_winner'),
-        supabase.from('skills').select('id, title, status, column_id'),
+        supabase.from('skills').select('id, name, status'),
     ])
 
     const stats = {
