@@ -34,7 +34,9 @@ export function CalendarDayView({ currentDate, currentTime, tasks, setTasks, use
     const timeSlots = useMemo(() => {
         const slots = []
         for (let i = 0; i < 24; i++) {
-            slots.push(`${i.toString().padStart(2, '0')}:00`)
+            const period = i < 12 ? 'AM' : 'PM'
+            const hour12 = i % 12 === 0 ? 12 : i % 12
+            slots.push(`${hour12} ${period}`)
         }
         return slots
     }, [])
