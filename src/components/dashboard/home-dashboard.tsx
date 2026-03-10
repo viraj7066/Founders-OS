@@ -27,11 +27,12 @@ interface HomeDashboardProps {
         posts: any[]
         members: any[]
         prompts: any[]
+        skills?: any[]
     }
 }
 
 export function HomeDashboard({ stats }: HomeDashboardProps) {
-    const { clients, leads, deliverables, scripts, posts, members, prompts } = stats
+    const { clients, leads, deliverables, scripts, posts, members, prompts, skills = [] } = stats
     const supabase = createClient()
 
     const [mounted, setMounted] = useState(false)
@@ -80,6 +81,7 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
 
     const activeClients = clients.filter(c => c.status === 'active').length
     const totalMRR = clients.reduce((s, c) => s + (c.mrr || 0), 0)
+    const wishlistSkillsCount = skills.filter(s => s.column_id === 'Wishlist').length
     const now = new Date()
     const sevenDaysFromNow = addDays(now, 7)
 
@@ -221,6 +223,9 @@ export function HomeDashboard({ stats }: HomeDashboardProps) {
                         </div>
                         <div className="flex items-center justify-center gap-1.5 text-xs bg-secondary/60 border border-white/5 text-foreground px-3 py-1.5 rounded-full backdrop-blur-md">
                             <PackageCheck className="w-3.5 h-3.5 text-emerald-400" /> {pendingDeliverables} Deliverables
+                        </div>
+                        <div className="flex items-center justify-center gap-1.5 text-xs bg-secondary/60 border border-white/5 text-foreground px-3 py-1.5 rounded-full backdrop-blur-md">
+                            <Star className="w-3.5 h-3.5 text-yellow-400" /> {wishlistSkillsCount} Wishlist Skills
                         </div>
                     </div>
                 </div>

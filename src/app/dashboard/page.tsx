@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'Dashboard',
+    title: 'Dashboard',
 }
 
 
@@ -28,6 +28,7 @@ export default async function DashboardPage() {
         { data: posts },
         { data: members },
         { data: prompts },
+        { data: skills },
     ] = await Promise.all([
         supabase.from('clients').select('id, name, status, mrr, health_score'),
         supabase.from('leads').select('id, name, company, status'),
@@ -36,6 +37,7 @@ export default async function DashboardPage() {
         supabase.from('content_posts').select('id, title, status, platform, scheduled_date'),
         supabase.from('team_members').select('id, name, role, status, tasks_completed, tasks_assigned'),
         supabase.from('ai_prompts').select('id, title, category, is_proven_winner'),
+        supabase.from('skills').select('id, title, status, column_id'),
     ])
 
     const stats = {
@@ -46,6 +48,7 @@ export default async function DashboardPage() {
         posts: posts || [],
         members: members || [],
         prompts: prompts || [],
+        skills: skills || [],
     }
 
     return (
