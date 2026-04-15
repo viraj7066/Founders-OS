@@ -498,8 +498,8 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="grid grid-cols-2 gap-3 w-full sm:max-w-sm">
                     <Card className="bg-card">
                         <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Invoiced</CardTitle></CardHeader>
                         <CardContent><p className="text-2xl font-bold">&#8377;{invoices.reduce((s, i) => s + i.amount, 0).toLocaleString()}</p></CardContent>
@@ -532,7 +532,7 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                     </Card>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                     <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" size="icon" title="Invoice Settings">
@@ -684,22 +684,19 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                             invoices.map(inv => {
                                 const clientName = clients.find(c => c.id === inv.client_id_or_name)?.name || inv.client_id_or_name
                                 return (
-                                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border bg-secondary/20 hover:bg-secondary/50 transition-colors">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold">{clientName}</span>
-                                                <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full border">{inv.invoice_number || `INV-${inv.id.substring(0, 6).toUpperCase()}`}</span>
+                                    <div key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border bg-secondary/20 hover:bg-secondary/50 transition-colors gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold truncate">{clientName}</span>
+                                                <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full border shrink-0">{inv.invoice_number || `INV-${inv.id.substring(0, 6).toUpperCase()}`}</span>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-1">
+                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                 <span className="text-sm text-muted-foreground">{format(parseISO(inv.date), 'MMM d, yyyy')} &bull; &#8377;{inv.amount.toLocaleString()}</span>
-                                                {inv.advance_received && (
-                                                    <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">Advance: &#8377;{inv.advance_amount?.toLocaleString()}</span>
-                                                )}
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3">
-                                            {/* Advance Received button — shows exact advance, disables after clicked */}
+                                        <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap justify-end shrink-0">
+                                            {/* Advance Received button */}
                                             {(() => {
                                                 const advAmt = inv.advance_amount || inv.payment_details_json?.advance || 0
                                                 if (inv.status === 'Paid' || !advAmt) return null
@@ -708,25 +705,30 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                                                         variant="outline"
                                                         size="sm"
                                                         disabled={!!inv.advance_collected}
-                                                        className={`h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 hidden sm:flex transition-all ${
+                                                        className={`h-8 text-[10px] font-bold uppercase tracking-wider gap-1 transition-all ${
                                                             inv.advance_collected
                                                                 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500 opacity-60 cursor-not-allowed'
                                                                 : 'border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-500'
                                                         }`}
                                                         onClick={() => !inv.advance_collected && handleCollectAdvance(inv)}
                                                     >
-                                                        <CheckCircle2 className="w-3 h-3" />
-                                                        {inv.advance_collected
-                                                            ? `Advance ₹${advAmt.toLocaleString()} ✓`
-                                                            : `Advance Received: ₹${advAmt.toLocaleString()}`
-                                                        }
+                                                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                                        <span className="hidden sm:inline">
+                                                            {inv.advance_collected
+                                                                ? `Adv ₹${advAmt.toLocaleString()} ✓`
+                                                                : `Advance: ₹${advAmt.toLocaleString()}`
+                                                            }
+                                                        </span>
+                                                        <span className="sm:hidden">
+                                                            {inv.advance_collected ? `₹${advAmt.toLocaleString()} ✓` : `₹${advAmt.toLocaleString()}`}
+                                                        </span>
                                                     </Button>
                                                 )
                                             })()}
 
-                                            {/* Status dropdown — Sent → Paid triggers balance revenue */}
+                                            {/* Status dropdown */}
                                             <Select value={inv.status} onValueChange={(val: string) => handleStatusChange(inv, val)}>
-                                                <SelectTrigger className={`h-8 border border-white/10 text-xs font-bold px-2 py-1 rounded-full outline-none w-[100px] ${
+                                                <SelectTrigger className={`h-8 border border-white/10 text-xs font-bold px-2 py-1 rounded-full outline-none w-[90px] sm:w-[100px] ${
                                                     inv.status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
                                                 }`}>
                                                     <SelectValue />

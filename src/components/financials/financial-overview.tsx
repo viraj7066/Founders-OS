@@ -222,7 +222,7 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
         <div className="space-y-6 pb-12">
 
             {/* ── 1. GOAL TRACKER (top) ── */}
-            <div className="bg-card border border-border rounded-2xl px-8 py-6">
+            <div className="bg-card border border-border rounded-2xl px-4 sm:px-8 py-5 sm:py-6">
                 {/* Title row */}
                 <div className="flex items-center gap-2 mb-4">
                     <Target className="w-4 h-4 text-primary shrink-0" />
@@ -230,11 +230,11 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
                 </div>
 
                 {/* Big number + badges row */}
-                <div className="flex items-start justify-between gap-6 mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6 mb-2">
                     <div>
                         {/* Large current / goal display */}
                         <div className="flex items-baseline gap-3">
-                            <span className="text-5xl font-extrabold tracking-tight text-foreground leading-none">
+                            <span className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-none">
                                 {effectiveRevenue >= 100000
                                     ? `₹${(effectiveRevenue / 100000).toFixed(2)}L`
                                     : `₹${effectiveRevenue.toLocaleString()}`}
@@ -247,20 +247,20 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
                     </div>
 
                     {/* Stat badges */}
-                    <div className="flex gap-3 shrink-0 flex-wrap justify-end">
-                        <div className="text-center px-5 py-3 rounded-xl border border-border bg-muted/40 min-w-[90px]">
-                            <p className="text-xl font-bold text-primary leading-tight">{mrrProgress.toFixed(1)}%</p>
+                    <div className="flex gap-2 sm:gap-3 shrink-0 flex-wrap sm:justify-end">
+                        <div className="text-center px-3 sm:px-5 py-2 sm:py-3 rounded-xl border border-border bg-muted/40 min-w-[72px] sm:min-w-[90px]">
+                            <p className="text-sm sm:text-xl font-bold text-primary leading-tight">{mrrProgress.toFixed(1)}%</p>
                             <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Complete</p>
                         </div>
-                        <div className="text-center px-5 py-3 rounded-xl border border-border bg-muted/40 min-w-[90px]">
-                            <p className="text-xl font-bold text-foreground leading-tight">
+                        <div className="text-center px-3 sm:px-5 py-2 sm:py-3 rounded-xl border border-border bg-muted/40 min-w-[72px] sm:min-w-[90px]">
+                            <p className="text-sm sm:text-xl font-bold text-foreground leading-tight">
                                 {arr >= 100000 ? `₹${(arr / 100000).toFixed(1)}L` : `₹${arr.toLocaleString()}`}
                             </p>
                             <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">ARR</p>
                         </div>
                         {mrrToGoal > 0 && (
-                            <div className="text-center px-5 py-3 rounded-xl border border-border bg-muted/40 min-w-[90px]">
-                                <p className="text-xl font-bold text-foreground leading-tight">
+                            <div className="text-center px-3 sm:px-5 py-2 sm:py-3 rounded-xl border border-border bg-muted/40 min-w-[72px] sm:min-w-[90px]">
+                                <p className="text-sm sm:text-xl font-bold text-foreground leading-tight">
                                     {mrrToGoal >= 100000 ? `₹${(mrrToGoal / 100000).toFixed(2)}L` : `₹${mrrToGoal.toLocaleString()}`}
                                 </p>
                                 <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Remaining</p>

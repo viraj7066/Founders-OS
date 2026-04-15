@@ -133,15 +133,15 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                     </Button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                     {/* "All Documents" Default Folder */}
                     <div
                         onClick={() => onFolderClick('all')}
                         className="group cursor-pointer flex flex-col items-center gap-3 fade-in"
                         style={{ animationDelay: '0ms' }}
                     >
-                        <motion.div
-                            className="relative w-full aspect-[1.25] max-w-[200px] mx-auto [perspective:1000px] mt-2 filter drop-shadow-md"
+                <motion.div
+                            className="relative w-full aspect-[1.25] max-w-[160px] sm:max-w-[200px] mx-auto [perspective:1000px] mt-2 filter drop-shadow-md"
                             variants={folderContainerVar}
                             initial="idle"
                             whileHover="hover"
@@ -194,8 +194,8 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                                 </div>
                             </motion.div>
                         </motion.div>
-                        <div className="text-center">
-                            <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors">Everything</h3>
+                        <div className="text-center px-1">
+                            <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors text-sm sm:text-base">Everything</h3>
                             <p className="text-xs text-muted-foreground font-medium">View All</p>
                         </div>
                     </div>
@@ -210,7 +210,7 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                                 style={{ animationDelay: `${(idx + 1) * 50}ms` }}
                             >
                                 <motion.div
-                                    className="relative w-full aspect-[1.25] max-w-[200px] mx-auto [perspective:1000px] mt-2 filter drop-shadow-md"
+                                    className="relative w-full aspect-[1.25] max-w-[160px] sm:max-w-[200px] mx-auto [perspective:1000px] mt-2 filter drop-shadow-md"
                                     variants={folderContainerVar}
                                     initial="idle"
                                     whileHover="hover"
@@ -268,9 +268,9 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                                         )}
                                     </motion.div>
 
-                                    {/* Actions Hover (Rename/Delete) */}
+                                    {/* Actions — always visible on mobile, hover-only on desktop */}
                                     {(onDeleteFolder || onRenameFolder) && (
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-50">
+                                        <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-50">
                                             {onRenameFolder && (
                                                 <Button
                                                     size="icon"
@@ -305,8 +305,8 @@ export function DocumentFolders({ folders, type, onFolderClick, onCreateFolder, 
                                     )}
 
                                 </motion.div>
-                                <div className="text-center">
-                                    <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors truncate max-w-[200px] px-2">{folder.name}</h3>
+                                <div className="text-center px-1">
+                                    <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors text-sm sm:text-base truncate max-w-[150px] sm:max-w-[200px] px-1">{folder.name}</h3>
                                     <p className="text-xs text-muted-foreground font-medium">{count} {count === 1 ? 'File' : 'Files'}</p>
                                 </div>
                             </div>

@@ -18,7 +18,7 @@ interface Board {
 }
 
 export default function InspirationPage() {
-  useEffect(() => { document.title = 'Moodboard'; }, [])
+    useEffect(() => { document.title = 'Moodboard' }, [])
 
     const router = useRouter()
     const supabaseRef = useRef(createClient())
@@ -102,7 +102,6 @@ export default function InspirationPage() {
         toast.success('Board deleted')
     }
 
-    // Open board on its own isolated route — no parent state changes can kill it
     const openBoard = (boardId: string) => {
         router.push(`/dashboard/inspiration/${boardId}`)
     }
@@ -130,11 +129,13 @@ export default function InspirationPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="animate-pulse flex gap-4">
-                        <div className="w-32 h-32 bg-secondary rounded-xl" />
-                        <div className="w-32 h-32 bg-secondary rounded-xl" />
+                    <div className="animate-pulse grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="w-full h-32 bg-secondary rounded-xl" />
+                        ))}
                     </div>
                 ) : !activeFolderId ? (
+                    // ── Folder Grid (uses DocumentFolders — already 2-col on mobile) ──
                     <DocumentFolders
                         folders={folders}
                         type="inspiration"
@@ -145,8 +146,10 @@ export default function InspirationPage() {
                         onRenameFolder={handleRenameFolder}
                     />
                 ) : (
+                    // ── Board View inside a folder ──
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between">
+                        {/* Header — stacks on mobile */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                             <Button
                                 variant="ghost"
                                 className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
@@ -154,16 +157,16 @@ export default function InspirationPage() {
                             >
                                 <ChevronLeft className="w-4 h-4" /> Back to Folders
                             </Button>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <Input
                                     placeholder="New board name..."
                                     value={newBoardName}
                                     onChange={e => setNewBoardName(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
-                                    className="w-48 h-9"
+                                    className="flex-1 sm:w-48 h-9"
                                 />
-                                <Button onClick={handleCreateBoard} disabled={!newBoardName.trim()} className="h-9 gap-2">
-                                    <Plus className="w-4 h-4" /> Create Board
+                                <Button onClick={handleCreateBoard} disabled={!newBoardName.trim()} className="h-9 gap-2 shrink-0">
+                                    <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Create Board</span><span className="sm:hidden">Create</span>
                                 </Button>
                             </div>
                         </div>
@@ -177,30 +180,32 @@ export default function InspirationPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            // ── 2 columns on mobile, more on larger screens ──
+                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                                 {displayedBoards.map(board => (
                                     <div
                                         key={board.id}
                                         onClick={() => openBoard(board.id)}
-                                        className="group cursor-pointer relative bg-card border border-border/50 rounded-2xl p-5 hover:border-primary/50 hover:shadow-md transition-all flex flex-col aspect-video justify-between"
+                                        className="group cursor-pointer relative bg-card border border-border/50 rounded-2xl p-4 sm:p-5 hover:border-primary/50 hover:shadow-md transition-all flex flex-col aspect-video justify-between"
                                     >
                                         <div className="flex items-start justify-between">
                                             <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                                                <LayoutGrid className="w-5 h-5" />
+                                                <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5" />
                                             </div>
+                                            {/* Delete: always visible on mobile touch, hover on desktop */}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={(e) => handleDeleteBoard(e, board.id)}
-                                                className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                                className="w-7 h-7 sm:w-8 sm:h-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             </Button>
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold text-foreground truncate">{board.name}</h4>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Updated {new Date(board.updated_at).toLocaleDateString()}
+                                            <h4 className="font-semibold text-foreground truncate text-sm sm:text-base">{board.name}</h4>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {new Date(board.updated_at).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>
