@@ -176,6 +176,10 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
 
 
     // ── Monthly Revenue Logic ──
+    // Rules per invoice in a given month (by invoice date):
+    //   - status === 'Paid'  → full amount (advance already included in full total)
+    //   - advance_collected && status !== 'Paid' → advance amount only
+    //   - neither → 0 (nothing collected yet)
     const last6Months = eachMonthOfInterval({
         start: subMonths(startOfMonth(new Date()), 5),
         end: startOfMonth(new Date())
@@ -184,11 +188,25 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
     const monthlyData = last6Months.map(month => {
         const monthStr = format(month, 'yyyy-MM')
         const monthLabel = format(month, 'MMM yy')
+
         const revenue = invoices
-            .filter(i => i.status === 'Paid' && i.date && i.date.startsWith(monthStr))
-            .reduce((sum, i) => sum + (i.amount || 0), 0)
+            .filter(i => i.date && i.date.startsWith(monthStr))
+            .reduce((sum, i) => {
+                if (i.status === 'Paid') {
+                    // Full invoice amount collected
+                    return sum + (i.amount || 0)
+                }
+                if (i.advance_collected) {
+                    // Only advance portion collected so far
+                    const adv = i.advance_amount || i.payment_details_json?.advance || 0
+                    return sum + adv
+                }
+                return sum
+            }, 0)
+
         return { name: monthLabel, revenue }
     })
+
 
     const tooltipStyle = {
         backgroundColor: 'var(--popover)',
