@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Copy, Plus, Search, Star, MessageSquareDashed, Image as ImageIcon, FileText, Settings2, Sparkles, TrendingUp, CalendarDays, Pencil, Trash2, FolderPlus, FolderX, X, AlertTriangle } from 'lucide-react'
+import { Copy, Plus, Search, Star, Settings2, Sparkles, TrendingUp, CalendarDays, Pencil, Trash2, FolderPlus, FolderX, X, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
@@ -57,6 +57,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
     const [editingPrompt, setEditingPrompt] = useState<AIPrompt | null>(null)
     const [editCustomCategory, setEditCustomCategory] = useState('')
     const [isEditing, setIsEditing] = useState(false)
+
     // Delete confirmation state
     const [deletePromptTarget, setDeletePromptTarget] = useState<AIPrompt | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
@@ -80,8 +81,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
 
     const handleCopy = (text: string) => {
         navigator.clipboard.writeText(text)
-        toast.success("Prompt copied to clipboard!")
-        // Ideally we would increment times_used here in the DB
+        toast.success('Prompt copied to clipboard!')
     }
 
     const handleToggleFavorite = async (id: string, currentStatus: boolean) => {
@@ -89,7 +89,6 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
             .from('ai_prompts')
             .update({ is_favorite: !currentStatus })
             .eq('id', id)
-
         if (!error) {
             setPrompts(prev => prev.map(p => p.id === id ? { ...p, is_favorite: !currentStatus } : p))
         }
@@ -102,40 +101,25 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
 
     const handleUpdatePrompt = async () => {
         if (!editingPrompt || !editingPrompt.title || !editingPrompt.prompt_text) {
-            toast.error("Title and content are required")
-            return
+            toast.error('Title and content are required'); return
         }
-
         const finalCategory = editingPrompt.category === 'Custom...'
             ? editCustomCategory.trim()
             : editingPrompt.category
-
         if (editingPrompt.category === 'Custom...' && !finalCategory) {
-            toast.error("Please enter a custom category name")
-            return
+            toast.error('Please enter a custom category name'); return
         }
-
         setIsEditing(true)
         const { error } = await supabase
             .from('ai_prompts')
-            .update({
-                title: editingPrompt.title,
-                category: finalCategory,
-                prompt_text: editingPrompt.prompt_text,
-                is_favorite: editingPrompt.is_favorite,
-                is_proven_winner: editingPrompt.is_proven_winner
-            })
+            .update({ title: editingPrompt.title, category: finalCategory, prompt_text: editingPrompt.prompt_text, is_favorite: editingPrompt.is_favorite, is_proven_winner: editingPrompt.is_proven_winner })
             .eq('id', editingPrompt.id)
-
         if (!error) {
-            setPrompts(prev => prev.map(p =>
-                p.id === editingPrompt.id ? { ...editingPrompt, category: finalCategory } : p
-            ))
+            setPrompts(prev => prev.map(p => p.id === editingPrompt.id ? { ...editingPrompt, category: finalCategory } : p))
             setEditingPrompt(null)
-            toast.success("Prompt updated!")
+            toast.success('Prompt updated!')
         } else {
-            toast.error("Failed to update prompt")
-            console.error(error)
+            toast.error('Failed to update prompt')
         }
         setIsEditing(false)
     }
@@ -156,41 +140,25 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
 
     const handleSavePrompt = async () => {
         if (!newPrompt.title || !newPrompt.prompt_text) {
-            toast.error("Please provide a title and prompt content")
-            return
+            toast.error('Please provide a title and prompt content'); return
         }
-
-        const finalCategory = newPrompt.category === 'Custom...' ? customCategory.trim() : (newPrompt.category || 'Social Media');
+        const finalCategory = newPrompt.category === 'Custom...' ? customCategory.trim() : (newPrompt.category || 'Social Media')
         if (newPrompt.category === 'Custom...' && !finalCategory) {
-            toast.error("Please enter a custom category name")
-            return
+            toast.error('Please enter a custom category name'); return
         }
-
         setIsSaving(true)
-        const payload = {
-            user_id: userId,
-            title: newPrompt.title,
-            category: finalCategory,
-            prompt_text: newPrompt.prompt_text,
-            is_favorite: newPrompt.is_favorite || false,
-            is_proven_winner: newPrompt.is_proven_winner || false
-        }
-
         const { data, error } = await supabase
             .from('ai_prompts')
-            .insert(payload)
-            .select()
-            .single()
-
+            .insert({ user_id: userId, title: newPrompt.title, category: finalCategory, prompt_text: newPrompt.prompt_text, is_favorite: newPrompt.is_favorite || false, is_proven_winner: newPrompt.is_proven_winner || false })
+            .select().single()
         if (!error && data) {
             setPrompts([data as AIPrompt, ...prompts])
             setIsAddOpen(false)
             setNewPrompt({ title: '', category: 'Social Media', prompt_text: '', is_favorite: false, is_proven_winner: false })
             setCustomCategory('')
-            toast.success("Prompt saved successfully!")
+            toast.success('Prompt saved successfully!')
         } else {
-            toast.error("Failed to save prompt")
-            console.error(error)
+            toast.error('Failed to save prompt')
         }
         setIsSaving(false)
     }
@@ -198,8 +166,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
     const handleAddCategory = () => {
         const name = newCategoryName.trim()
         if (!name || customCategories.includes(name) || baseCategories.includes(name)) {
-            toast.error(!name ? 'Enter a category name' : 'Category already exists')
-            return
+            toast.error(!name ? 'Enter a category name' : 'Category already exists'); return
         }
         setCustomCategories(prev => [...prev, name])
         setNewCategoryName('')
@@ -207,10 +174,8 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
     }
 
     const handleDeleteCategory = (cat: string) => {
-        const hasPrompts = prompts.some(p => p.category === cat)
-        if (hasPrompts) {
-            toast.error(`Cannot delete "${cat}" — it has prompts. Re-categorize them first.`)
-            return
+        if (prompts.some(p => p.category === cat)) {
+            toast.error(`Cannot delete "${cat}" — it has prompts. Re-categorize them first.`); return
         }
         setCustomCategories(prev => prev.filter(c => c !== cat))
         if (activeTab === cat) setActiveTab('All')
@@ -228,8 +193,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                             onClick={() => setActiveTab(cat)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === cat
                                 ? 'bg-background text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                                }`}
+                                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
                         >
                             {cat}
                         </button>
@@ -238,8 +202,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                         onClick={() => setActiveTab('Favorites')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1 ${activeTab === 'Favorites'
                             ? 'bg-background text-yellow-400 shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                            }`}
+                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
                     >
                         <Star className="w-4 h-4" />
                         Favorites
@@ -257,7 +220,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                         />
                     </div>
 
-                    {/* Manage Categories Dialog */}
+                    {/* Manage Categories */}
                     <Dialog open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" className="border-white/10 text-muted-foreground hover:text-foreground shrink-0 gap-2">
@@ -293,7 +256,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Custom Categories</p>
                                         <div className="space-y-1">
                                             {customCategories.map(cat => (
-                                                <div key={cat} className="flex items-center justify-between px-3 py-2 rounded-lg bg-secondary/30 border border-white/8 group">
+                                                <div key={cat} className="flex items-center justify-between px-3 py-2 rounded-lg bg-secondary/30 border border-white/5 group">
                                                     <span className="text-sm text-foreground">{cat}</span>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] text-muted-foreground">{prompts.filter(p => p.category === cat).length} prompts</span>
@@ -310,6 +273,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                         </DialogContent>
                     </Dialog>
 
+                    {/* New Prompt */}
                     <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                         <DialogTrigger asChild>
                             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 shrink-0">
@@ -325,31 +289,22 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                             <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
                                     <label className="text-sm font-medium">Title</label>
-                                    <Input
-                                        placeholder="e.g. Viral Hook Generator"
-                                        value={newPrompt.title}
+                                    <Input placeholder="e.g. Viral Hook Generator" value={newPrompt.title}
                                         onChange={e => setNewPrompt({ ...newPrompt, title: e.target.value })}
-                                        className="bg-secondary/50 border-white/10"
-                                    />
+                                        className="bg-secondary/50 border-white/10" />
                                 </div>
                                 <div className="grid gap-2">
                                     <label className="text-sm font-medium">Category</label>
                                     <Select value={newPrompt.category} onValueChange={(val: string) => setNewPrompt({ ...newPrompt, category: val })}>
-                                        <SelectTrigger className="bg-secondary/50 border-white/10 mt-1">
-                                            <SelectValue />
-                                        </SelectTrigger>
+                                        <SelectTrigger className="bg-secondary/50 border-white/10 mt-1"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-card">
                                             {dropdownCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     {newPrompt.category === 'Custom...' && (
-                                        <Input
-                                            placeholder="Enter custom category name"
-                                            value={customCategory}
+                                        <Input placeholder="Enter custom category name" value={customCategory}
                                             onChange={e => setCustomCategory(e.target.value)}
-                                            className="bg-secondary/50 border-white/10 mt-1"
-                                            autoFocus
-                                        />
+                                            className="bg-secondary/50 border-white/10 mt-1" autoFocus />
                                     )}
                                 </div>
                                 <div className="grid gap-2">
@@ -358,26 +313,20 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                                         placeholder="Act as a master copywriter. Your task is to..."
                                         value={newPrompt.prompt_text}
                                         onChange={e => setNewPrompt({ ...newPrompt, prompt_text: e.target.value })}
-                                        className="flex min-h-[150px] w-full rounded-md border border-white/10 bg-secondary/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        className="flex min-h-[150px] w-full rounded-md border border-white/10 bg-secondary/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     />
                                 </div>
                                 <div className="flex gap-4">
                                     <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={newPrompt.is_proven_winner}
+                                        <input type="checkbox" checked={newPrompt.is_proven_winner}
                                             onChange={e => setNewPrompt({ ...newPrompt, is_proven_winner: e.target.checked })}
-                                            className="rounded border-white/20 bg-secondary/50"
-                                        />
+                                            className="rounded border-white/20 bg-secondary/50" />
                                         Mark as Proven Winner
                                     </label>
                                     <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={newPrompt.is_favorite}
+                                        <input type="checkbox" checked={newPrompt.is_favorite}
                                             onChange={e => setNewPrompt({ ...newPrompt, is_favorite: e.target.checked })}
-                                            className="rounded border-white/20 bg-secondary/50"
-                                        />
+                                            className="rounded border-white/20 bg-secondary/50" />
                                         Add to Favorites
                                     </label>
                                 </div>
@@ -422,25 +371,19 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                                     <CardTitle className="text-base font-semibold leading-tight">{prompt.title}</CardTitle>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => handleToggleFavorite(prompt.id, prompt.is_favorite)}
+                                    <button onClick={() => handleToggleFavorite(prompt.id, prompt.is_favorite)}
                                         className={`p-1.5 rounded-md transition-colors ${prompt.is_favorite ? 'text-yellow-400' : 'text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-secondary'}`}
-                                        title="Toggle favorite"
-                                    >
-                                        <Star className="w-4 h-4" fill={prompt.is_favorite ? "currentColor" : "none"} />
+                                        title="Toggle favorite">
+                                        <Star className="w-4 h-4" fill={prompt.is_favorite ? 'currentColor' : 'none'} />
                                     </button>
-                                    <button
-                                        onClick={() => openEditDialog(prompt)}
+                                    <button onClick={() => openEditDialog(prompt)}
                                         className="p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-secondary hover:text-foreground transition-colors"
-                                        title="Edit prompt"
-                                    >
+                                        title="Edit prompt">
                                         <Pencil className="w-3.5 h-3.5" />
                                     </button>
-                                    <button
-                                        onClick={() => setDeletePromptTarget(prompt)}
+                                    <button onClick={() => setDeletePromptTarget(prompt)}
                                         className="p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-colors"
-                                        title="Delete prompt"
-                                    >
+                                        title="Delete prompt">
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
@@ -455,18 +398,14 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                                     <span className="flex items-center gap-1.5" title="Times Used">
                                         <Sparkles className="w-3.5 h-3.5" /> {prompt.times_used || 0}
                                     </span>
-                                    <span className="flex items-center gap-1.5" title="Added">
+                                    <span className="flex items-center gap-1.5">
                                         <CalendarDays className="w-3.5 h-3.5 hidden" /> {format(new Date(prompt.created_at), 'MMM d, yyyy')}
                                     </span>
                                 </div>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
+                                <Button size="sm" variant="ghost"
                                     className="h-8 gap-2 hover:bg-primary/20 hover:text-primary transition-colors"
-                                    onClick={() => handleCopy(prompt.prompt_text)}
-                                >
-                                    <Copy className="w-3.5 h-3.5" />
-                                    Copy
+                                    onClick={() => handleCopy(prompt.prompt_text)}>
+                                    <Copy className="w-3.5 h-3.5" /> Copy
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -485,57 +424,41 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
                                 <label className="text-sm font-medium">Title</label>
-                                <Input
-                                    value={editingPrompt.title}
+                                <Input value={editingPrompt.title}
                                     onChange={e => setEditingPrompt({ ...editingPrompt, title: e.target.value })}
-                                    className="bg-secondary/50 border-white/10"
-                                />
+                                    className="bg-secondary/50 border-white/10" />
                             </div>
                             <div className="grid gap-2">
                                 <label className="text-sm font-medium">Category</label>
                                 <Select value={editingPrompt.category} onValueChange={(val: string) => setEditingPrompt({ ...editingPrompt, category: val })}>
-                                    <SelectTrigger className="bg-secondary/50 border-white/10 mt-1">
-                                        <SelectValue />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="bg-secondary/50 border-white/10 mt-1"><SelectValue /></SelectTrigger>
                                     <SelectContent className="bg-card">
                                         {dropdownCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 {editingPrompt.category === 'Custom...' && (
-                                    <Input
-                                        placeholder="Enter custom category name"
-                                        value={editCustomCategory}
+                                    <Input placeholder="Enter custom category name" value={editCustomCategory}
                                         onChange={e => setEditCustomCategory(e.target.value)}
-                                        className="bg-secondary/50 border-white/10 mt-1"
-                                        autoFocus
-                                    />
+                                        className="bg-secondary/50 border-white/10 mt-1" autoFocus />
                                 )}
                             </div>
                             <div className="grid gap-2">
                                 <label className="text-sm font-medium">Prompt Content</label>
-                                <textarea
-                                    value={editingPrompt.prompt_text}
+                                <textarea value={editingPrompt.prompt_text}
                                     onChange={e => setEditingPrompt({ ...editingPrompt, prompt_text: e.target.value })}
-                                    className="flex min-h-[150px] w-full rounded-md border border-white/10 bg-secondary/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                />
+                                    className="flex min-h-[150px] w-full rounded-md border border-white/10 bg-secondary/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                             </div>
                             <div className="flex gap-4">
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={editingPrompt.is_proven_winner}
+                                    <input type="checkbox" checked={editingPrompt.is_proven_winner}
                                         onChange={e => setEditingPrompt({ ...editingPrompt, is_proven_winner: e.target.checked })}
-                                        className="rounded border-white/20 bg-secondary/50"
-                                    />
+                                        className="rounded border-white/20 bg-secondary/50" />
                                     Mark as Proven Winner
                                 </label>
                                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={editingPrompt.is_favorite}
+                                    <input type="checkbox" checked={editingPrompt.is_favorite}
                                         onChange={e => setEditingPrompt({ ...editingPrompt, is_favorite: e.target.checked })}
-                                        className="rounded border-white/20 bg-secondary/50"
-                                    />
+                                        className="rounded border-white/20 bg-secondary/50" />
                                     Favorite
                                 </label>
                             </div>
@@ -550,7 +473,7 @@ export function IPVaultDashboard({ initialPrompts, userId }: IPVaultDashboardPro
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
+            {/* Delete Confirmation */}
             <Dialog open={!!deletePromptTarget} onOpenChange={open => { if (!open) setDeletePromptTarget(null) }}>
                 <DialogContent className="sm:max-w-[380px] rounded-2xl">
                     <DialogHeader>

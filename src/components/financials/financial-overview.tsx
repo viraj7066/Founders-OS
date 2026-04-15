@@ -21,13 +21,21 @@ import {
 } from 'recharts'
 import { format, parseISO, startOfMonth, eachMonthOfInterval, subMonths } from 'date-fns'
 
-interface Client { id: string; name: string; mrr: number; status: string; service_type?: string }
+interface Client { id: string; name: string; mrr: number; status: string; service_type?: string; service?: string }
 interface Expense { id: string; user_id: string; label: string; amount: number; category: string; date: string; recurring: boolean }
 
 interface Props {
     clients: Client[]
     expenses: Expense[]
-    invoices: { id: string; amount: number; status: string; date: string }[]
+    invoices: {
+        id: string
+        amount: number
+        status: string
+        date: string
+        advance_collected?: boolean
+        advance_amount?: number
+        payment_details_json?: any
+    }[]
     userId: string
 }
 
@@ -49,6 +57,8 @@ const INVOICE_COLORS = { Paid: '#10b981', Pending: '#f59e0b', Overdue: '#ef4444'
 
 export function FinancialDashboard({ clients: initialClients, expenses: initialExpenses, invoices, userId }: Props) {
     const supabase = createClient()
+    // initialClients is already fetched client-side by the page, so use directly
+    const [clients] = useState<Client[]>(initialClients)
     const [expenses, setExpenses] = useState<Expense[]>(initialExpenses)
     const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -59,12 +69,32 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
         date: new Date().toISOString().split('T')[0], recurring: false,
     })
 
-    // ── Calculations ──
-    const activeClients = initialClients.filter(c => c.status === 'active')
-    const totalMRR = activeClients.reduce((s, c) => s + (c.mrr || 0), 0)
+    // ── Calculations ──────────────────────────────────────────────────────────
+    // Active = any status that is NOT churned / cancelled / inactive / lost
+    // Handles: 'active', 'Active', 'ACTIVE', 'Retainer', 'retainer', etc.
+    const INACTIVE_STATUSES = ['churned', 'cancelled', 'inactive', 'lost', 'at-risk', 'at_risk']
+    const activeClients = clients.filter(c => {
+        const s = (c.status || '').toLowerCase().trim()
+        return s !== '' && !INACTIVE_STATUSES.includes(s)
+    })
+
+    // MRR — use activeClients; if that's empty, fall back to ALL clients with MRR > 0
+    const mrrClients = activeClients.length > 0
+        ? activeClients
+        : clients.filter(c => (c.mrr || 0) > 0)
+
+    const totalMRR = mrrClients.reduce((s, c) => s + (Number(c.mrr) || 0), 0)
     const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0)
     const recurringExpenses = expenses.filter(e => e.recurring).reduce((s, e) => s + (e.amount || 0), 0)
-    const realizedRevenue = invoices?.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0) || 0
+    // realized revenue = fully Paid invoices + advance-only collected on Sent invoices
+    const realizedRevenue = invoices?.reduce((s, i) => {
+        if (i.status === 'Paid') return s + (i.amount || 0)
+        if (i.advance_collected) {
+            const adv = i.advance_amount || i.payment_details_json?.advance || 0
+            return s + adv
+        }
+        return s
+    }, 0) || 0
     const effectiveRevenue = realizedRevenue > 0 ? realizedRevenue : totalMRR
     const netProfit = effectiveRevenue - totalExpenses
     const profitMargin = effectiveRevenue > 0 ? Math.round((netProfit / effectiveRevenue) * 100) : 0
@@ -72,11 +102,15 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
     const mrrProgress = Math.min((effectiveRevenue / MRR_GOAL) * 100, 100)
     const mrrToGoal = Math.max(MRR_GOAL - effectiveRevenue, 0)
 
-    const serviceBreakdown = initialClients.reduce<Record<string, number>>((acc, c) => {
-        const key = c.service_type || 'Other'
-        acc[key] = (acc[key] || 0) + (c.mrr || 0)
-        return acc
-    }, {})
+    // MRR by Service — from all clients with MRR, grouped by service label
+    const serviceBreakdown = mrrClients
+        .filter(c => (Number(c.mrr) || 0) > 0)
+        .reduce<Record<string, number>>((acc, c) => {
+            const key = (c.service || c.service_type || c.status || 'Other').trim()
+            acc[key] = (acc[key] || 0) + (Number(c.mrr) || 0)
+            return acc
+        }, {})
+
 
     const fmtShort = (v: number) => v >= 100000
         ? `₹${(v / 100000).toFixed(2)}L`
@@ -119,11 +153,27 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
         setDeleteTarget(null)
     }
 
-    const invoicePieData = [
-        { name: 'Paid', value: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0), color: INVOICE_COLORS.Paid },
-        { name: 'Pending', value: invoices.filter(i => i.status === 'Sent' || i.status === 'Pending').reduce((s, i) => s + i.amount, 0), color: INVOICE_COLORS.Pending },
-        { name: 'Overdue', value: invoices.filter(i => i.status === 'Overdue').reduce((s, i) => s + i.amount, 0), color: INVOICE_COLORS.Overdue },
-    ].filter(d => d.value > 0)
+    const invoicePieData = (() => {
+        let paidValue = 0, pendingValue = 0, overdueValue = 0
+        invoices.forEach(i => {
+            const adv = i.advance_collected ? (i.advance_amount || i.payment_details_json?.advance || 0) : 0
+            if (i.status === 'Paid') {
+                paidValue += i.amount
+            } else if (i.status === 'Overdue') {
+                paidValue += adv                    // advance portion counts as paid
+                overdueValue += (i.amount - adv)    // remaining is overdue
+            } else {
+                paidValue += adv                    // advance portion counts as paid
+                pendingValue += (i.amount - adv)    // remaining is still pending
+            }
+        })
+        return [
+            { name: 'Collected', value: paidValue, color: INVOICE_COLORS.Paid },
+            { name: 'Pending', value: pendingValue, color: INVOICE_COLORS.Pending },
+            { name: 'Overdue', value: overdueValue, color: INVOICE_COLORS.Overdue },
+        ].filter(d => d.value > 0)
+    })()
+
 
     // ── Monthly Revenue Logic ──
     const last6Months = eachMonthOfInterval({
@@ -289,6 +339,17 @@ export function FinancialDashboard({ clients: initialClients, expenses: initialE
                                 </ResponsiveContainer>
                             )}
                         </div>
+                        {/* MRR by Service breakdown list */}
+                        {Object.keys(serviceBreakdown).length > 0 && (
+                            <div className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
+                                {Object.entries(serviceBreakdown).map(([svc, amt]) => (
+                                    <div key={svc} className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">{svc}</span>
+                                        <span className="font-semibold text-foreground">₹{(amt as number).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Cashflow Pipeline */}

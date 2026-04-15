@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Client, ClientStatus } from '@/types/clients'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Building2, Mail, Phone, Activity, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Building2, Mail, Phone, Activity, Trash2, AlertTriangle, Download, FileText } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { format, parseISO } from 'date-fns'
 
 interface ClientListProps {
     initialClients: Client[]
@@ -33,6 +34,11 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
     const [deleteClientTarget, setDeleteClientTarget] = useState<Client | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
+
+    // Invoice tab state
+    const [clientInvoices, setClientInvoices] = useState<any[]>([])
+    const [invoicesLoading, setInvoicesLoading] = useState(false)
+    const [activeDialogTab, setActiveDialogTab] = useState('deliverables')
 
     // New/Edit Client State
     const [isNewClientOpen, setIsNewClientOpen] = useState(false)
@@ -70,7 +76,20 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
         setSelectedClient(client)
         setEditedClient(client)
         setIsEditingClient(false)
+        setActiveDialogTab('deliverables')
+        setClientInvoices([])
         setIsDetailOpen(true)
+    }
+
+    const fetchClientInvoices = async (client: Client) => {
+        setInvoicesLoading(true)
+        const { data } = await supabase
+            .from('invoices')
+            .select('*')
+            .or(`client_id_or_name.eq.${client.id},client_id_or_name.eq.${client.name}`)
+            .order('date', { ascending: false })
+        setClientInvoices(data || [])
+        setInvoicesLoading(false)
     }
 
     const handleDeleteClient = async () => {
@@ -90,7 +109,7 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
     }
 
     const handleSaveNewClient = async () => {
-        if (!newClient.name || !newClient.company) return
+        if (!newClient.name || !newClient.company || !newClient.service) return
         setIsSaving(true)
 
         const clientData = {
@@ -102,7 +121,8 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
             mrr: newClient.mrr || 0,
             onboarded_at: newClient.onboardedAt || new Date().toISOString().split('T')[0],
             email: newClient.email,
-            phone: newClient.phone
+            phone: newClient.phone,
+            service: newClient.service
         }
         const { data, error } = await supabase
             .from('clients')
@@ -120,10 +140,11 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
                 mrr: newClient.mrr || 0,
                 onboardedAt: newClient.onboardedAt || new Date().toISOString().split('T')[0],
                 email: newClient.email,
-                phone: newClient.phone
+                phone: newClient.phone,
+                service: newClient.service
             }
             setClients([clientToAdd, ...clients])
-            setNewClient({ name: '', company: '', status: 'active', healthScore: 100, mrr: 0, onboardedAt: new Date().toISOString().split('T')[0], email: '', phone: '' })
+            setNewClient({ name: '', company: '', status: 'active', healthScore: 100, mrr: 0, onboardedAt: new Date().toISOString().split('T')[0], email: '', phone: '', service: '' })
             setIsNewClientOpen(false)
             router.refresh()
         } else {
@@ -133,7 +154,7 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
     }
 
     const handleSaveEditClient = async () => {
-        if (!selectedClient || !editedClient.name || !editedClient.company) return
+        if (!selectedClient || !editedClient.name || !editedClient.company || !editedClient.service) return
         setIsSaving(true)
 
         const updateData = {
@@ -143,7 +164,8 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
             health_score: editedClient.healthScore,
             mrr: editedClient.mrr,
             email: editedClient.email,
-            phone: editedClient.phone
+            phone: editedClient.phone,
+            service: editedClient.service
         }
 
         const { error } = await supabase.from('clients').update(updateData).eq('id', selectedClient.id)
@@ -286,6 +308,32 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
                                     </Select>
                                 </div>
                             </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="service" className="text-foreground">Service <span className="text-red-500">*</span></Label>
+                                <Select value={newClient.service?.startsWith('Custom:') ? 'Custom' : (newClient.service || '')} onValueChange={val => {
+                                    if(val === 'Custom') setNewClient({...newClient, service: 'Custom: '})
+                                    else setNewClient({...newClient, service: val})
+                                }}>
+                                    <SelectTrigger className="bg-secondary/50 border-border text-foreground">
+                                        <SelectValue placeholder="Select a service" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-border">
+                                        <SelectItem value="AI Automations">AI Automations</SelectItem>
+                                        <SelectItem value="AI Shoot">AI Shoot</SelectItem>
+                                        <SelectItem value="Websites">Websites</SelectItem>
+                                        <SelectItem value="AI Powered Content">AI Powered Content</SelectItem>
+                                        <SelectItem value="Custom">Custom</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {newClient.service?.startsWith('Custom:') && (
+                                    <Input 
+                                        value={newClient.service.replace('Custom: ', '')} 
+                                        onChange={e => setNewClient({ ...newClient, service: 'Custom: ' + e.target.value })} 
+                                        className="bg-secondary/50 border-border mt-1" 
+                                        placeholder="Enter custom service" 
+                                    />
+                                )}
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button onClick={handleSaveNewClient} disabled={isSaving} className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -391,6 +439,32 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+                                            <div className="col-span-3">
+                                                <Label className="text-xs">Service <span className="text-red-500">*</span></Label>
+                                                <Select value={editedClient.service?.startsWith('Custom:') ? 'Custom' : (editedClient.service || '')} onValueChange={val => {
+                                                    if(val === 'Custom') setEditedClient({...editedClient, service: 'Custom: '})
+                                                    else setEditedClient({...editedClient, service: val})
+                                                }}>
+                                                    <SelectTrigger className="bg-secondary/50 border-border mt-1">
+                                                        <SelectValue placeholder="Select a service" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-card">
+                                                        <SelectItem value="AI Automations">AI Automations</SelectItem>
+                                                        <SelectItem value="AI Shoot">AI Shoot</SelectItem>
+                                                        <SelectItem value="Websites">Websites</SelectItem>
+                                                        <SelectItem value="AI Powered Content">AI Powered Content</SelectItem>
+                                                        <SelectItem value="Custom">Custom</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {editedClient.service?.startsWith('Custom:') && (
+                                                    <Input 
+                                                        value={editedClient.service.replace('Custom: ', '')} 
+                                                        onChange={e => setEditedClient({ ...editedClient, service: 'Custom: ' + e.target.value })} 
+                                                        className="bg-secondary/50 mt-2" 
+                                                        placeholder="Enter custom service" 
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -426,7 +500,10 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
                                             </Card>
                                         </div>
 
-                                        <Tabs defaultValue="deliverables" className="w-full">
+                                        <Tabs value={activeDialogTab} onValueChange={(tab) => {
+                                                setActiveDialogTab(tab)
+                                                if (tab === 'invoices' && selectedClient) fetchClientInvoices(selectedClient)
+                                            }} className="w-full">
                                             <TabsList className="bg-secondary/50 border border-border/50 w-full justify-start rounded-b-none border-b-0 pb-0 px-2 pt-2">
                                                 <TabsTrigger value="deliverables" className="data-[state=active]:bg-card data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none rounded-t-md">Deliverables</TabsTrigger>
                                                 <TabsTrigger value="notes" className="data-[state=active]:bg-card data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none rounded-t-md">Strategic Notes</TabsTrigger>
@@ -447,7 +524,28 @@ export function ClientList({ initialClients, userId }: ClientListProps) {
                                             </TabsContent>
 
                                             <TabsContent value="invoices" className="bg-card border-x border-b border-border/50 p-4 rounded-b-xl m-0 outline-none">
-                                                <div className="text-center py-6 text-sm text-muted-foreground">Invoice tracking module coming soon.</div>
+                                                {invoicesLoading ? (
+                                                    <div className="text-center py-6 text-sm text-muted-foreground">Loading invoices…</div>
+                                                ) : clientInvoices.length === 0 ? (
+                                                    <div className="text-center py-6 text-sm text-muted-foreground">No invoices found for this client</div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {clientInvoices.map((inv: any) => (
+                                                            <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-secondary/20 hover:bg-secondary/40 transition-colors">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                        <span className="text-sm font-semibold">{inv.invoice_number || `INV-${inv.id.substring(0, 6).toUpperCase()}`}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-muted-foreground mt-0.5">{inv.date ? format(parseISO(inv.date), 'MMM d, yyyy') : '—'} • ₹{(inv.amount || 0).toLocaleString()}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline" className={`text-xs font-semibold ${inv.status === 'Paid' ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' : inv.status === 'Overdue' ? 'text-red-500 border-red-500/30 bg-red-500/10' : 'text-amber-500 border-amber-500/30 bg-amber-500/10'}`}>{inv.status}</Badge>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </TabsContent>
                                         </Tabs>
                                     </>

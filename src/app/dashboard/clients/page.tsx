@@ -7,7 +7,6 @@ export const metadata = {
   title: 'Client Management',
 }
 
-
 export const dynamic = 'force-dynamic'
 export default async function ClientsPage() {
     const supabase = await createClient()
@@ -35,7 +34,8 @@ export default async function ClientsPage() {
         mrr: c.mrr,
         onboardedAt: c.onboarded_at,
         email: c.email || '',
-        phone: c.phone || ''
+        phone: c.phone || '',
+        service: c.service || ''
     }))
 
     return (

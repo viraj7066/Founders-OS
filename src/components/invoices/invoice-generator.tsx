@@ -29,7 +29,8 @@ interface InvoiceItem { desc: string; qty: number; price: number }
 interface Invoice {
     id: string; client_id_or_name: string; amount: number; date: string; status: string;
     items_json: InvoiceItem[]; payment_details_json: any; notes?: string; folder_id?: string;
-    advance_received?: boolean; advance_amount?: number;
+    advance_received?: boolean; advance_amount?: number; invoice_number?: string;
+    advance_collected?: boolean;  // true = advance button was clicked, prevents double-count
 }
 
 interface Props { invoices: Invoice[]; clients: Client[]; userId: string; activeFolderId?: string; folders?: any[] }
@@ -79,126 +80,264 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
 
     const grandTotal = items.reduce((sum, item) => sum + (item.qty * item.price), 0)
 
+    // Generate YYYYDDMM invoice number with suffix for same-day invoices
+    const generateInvoiceNumber = (dateStr: string, existingInvoices: Invoice[]): string => {
+        const d = new Date(dateStr)
+        const yyyy = d.getFullYear()
+        const dd = String(d.getDate()).padStart(2, '0')
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const base = `${yyyy}${dd}${mm}`
+        // Count how many invoices already use this base on the same date
+        const sameDayCount = existingInvoices.filter(inv => inv.date === dateStr).length
+        return sameDayCount === 0 ? base : `${base}-${sameDayCount}`
+    }
+
     const generatePDF = (inv: Invoice, isPreview = false) => {
         const doc = new jsPDF()
+        const PAGE_W = 210
+        const MARGIN = 14
+        const RIGHT = PAGE_W - MARGIN  // 196
         const clientName = clients.find(c => c.id === inv.client_id_or_name)?.name || inv.client_id_or_name
+        const invNum = inv.invoice_number || `INV-${inv.id.substring(0, 6).toUpperCase()}`
+        const invDate = format(parseISO(inv.date), 'dd MMMM yyyy')
 
-        // --- Branding & Header ---
+        // ── 1. TOP HEADER BAR (dark) ─────────────────────────────
+        doc.setFillColor(18, 18, 20)          // near-black
+        doc.rect(0, 0, PAGE_W, 38, 'F')
+
+        // Logo / Brand (left side)
         if (logoBase64) {
-            try { doc.addImage(logoBase64, 'JPEG', 14, 15, 30, 15) } catch { /* Ignore malformed image */ }
+            try { doc.addImage(logoBase64, 'JPEG', MARGIN, 8, 28, 14) } catch {}
         } else {
-            doc.setFillColor(0, 0, 0)
-            doc.rect(14, 15, 12, 12, 'F')
+            doc.setFillColor(255, 140, 50)    // orange accent square
+            doc.roundedRect(MARGIN, 9, 12, 12, 2, 2, 'F')
+            doc.setTextColor(255, 255, 255)
             doc.setFont('helvetica', 'bold')
-            doc.setFontSize(22)
-            doc.text('SECOND', 30, 20)
-            doc.setFontSize(16)
-            doc.text('LENS Studio', 30, 26)
+            doc.setFontSize(7)
+            doc.text('SLS', MARGIN + 6, 16.5, { align: 'center' })
+
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(13)
+            doc.setTextColor(255, 255, 255)
+            doc.text('Second Lens Studio', MARGIN + 16, 17)
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(7)
+            doc.setTextColor(180, 180, 180)
+            doc.text('Photography & Visual Agency', MARGIN + 16, 22)
         }
 
+        // Invoice label + number (right side)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(255, 140, 50)        // orange
+        doc.text('INVOICE', RIGHT, 16, { align: 'right' })
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(200, 200, 200)
+        doc.text(invNum, RIGHT, 22, { align: 'right' })
+        doc.text(invDate, RIGHT, 28, { align: 'right' })
+
+        // ── 2. INVOICE TITLE ────────────────────────────────────
+        doc.setTextColor(18, 18, 20)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(28)
+        doc.text('INVOICE', MARGIN, 56)
+
+        // thin accent underline
+        doc.setDrawColor(255, 140, 50)
+        doc.setLineWidth(0.8)
+        doc.line(MARGIN, 59, 68, 59)
+        doc.setLineWidth(0.2)
+
+        // ── 3. BILLED TO / FROM block ────────────────────────────
+        const billY = 70
+        // Left column — Billed To
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7.5)
+        doc.setTextColor(140, 140, 140)
+        doc.text('BILLED TO', MARGIN, billY)
+
+        doc.setFont('helvetica', 'bold')
         doc.setFontSize(10)
-        doc.setFont('helvetica', 'normal')
-        doc.text(`INV-${inv.id.substring(0, 6).toUpperCase()}`, 170, 20)
+        doc.setTextColor(18, 18, 20)
+        doc.text(clientName, MARGIN, billY + 7)
 
-        // TITLE
-        doc.setFontSize(40)
+        // Right column — From (right-aligned)
         doc.setFont('helvetica', 'bold')
-        doc.text('INVOICE', 14, 50)
+        doc.setFontSize(7.5)
+        doc.setTextColor(140, 140, 140)
+        doc.text('FROM', RIGHT, billY, { align: 'right' })
 
-        // --- Meta data ---
+        doc.setFont('helvetica', 'bold')
         doc.setFontSize(10)
-        doc.setFont('helvetica', 'bold')
-        doc.text('Date: ', 14, 65)
+        doc.setTextColor(18, 18, 20)
+        doc.text('Second Lens Studio', RIGHT, billY + 7, { align: 'right' })
         doc.setFont('helvetica', 'normal')
-        doc.text(format(parseISO(inv.date), 'dd MMMM yyyy'), 26, 65)
+        doc.setFontSize(8.5)
+        doc.setTextColor(80, 80, 80)
+        doc.text('Dhule, Maharashtra', RIGHT, billY + 13, { align: 'right' })
+        doc.text('secondlensstudio@gmail.com', RIGHT, billY + 19, { align: 'right' })
 
-        // Billed To & From
-        doc.setFont('helvetica', 'bold')
-        doc.text('Billed to:', 14, 80)
-        doc.setFont('helvetica', 'normal')
-        doc.text(clientName, 14, 86)
+        // horizontal rule
+        doc.setDrawColor(220, 220, 220)
+        doc.setLineWidth(0.3)
+        doc.line(MARGIN, billY + 27, RIGHT, billY + 27)
+        doc.setLineWidth(0.2)
 
-        doc.setFont('helvetica', 'bold')
-        doc.text('From:', 110, 80)
-        doc.setFont('helvetica', 'normal')
-        doc.text('Second Lens Studio\nDhule\nsecondlensstudio@gmail.com', 110, 86)
-
-        // --- Table ---
+        // ── 4. LINE ITEMS TABLE ───────────────────────────────────
         const tableData = inv.items_json.map(item => [
             item.desc,
             item.qty.toString(),
-            `Rs. ${item.price.toLocaleString()}`,
-            `Rs. ${(item.qty * item.price).toLocaleString()}`
+            `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+            `Rs. ${Number(item.qty * item.price).toLocaleString('en-IN')}`
         ])
 
         autoTable(doc, {
-            startY: 110,
-            head: [['Item', 'Quantity', 'Price', 'Amount']],
+            startY: billY + 32,
+            head: [['Description', 'Qty', 'Unit Price', 'Amount']],
             body: tableData,
             theme: 'plain',
-            headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
-            bodyStyles: { textColor: [0, 0, 0] },
-            alternateRowStyles: { fillColor: [255, 255, 255] },
-            margin: { left: 14, right: 14 }
+            styles: {
+                font: 'helvetica',
+                fontSize: 9,
+                cellPadding: { top: 5, bottom: 5, left: 4, right: 4 },
+                textColor: [30, 30, 30],
+                lineColor: [235, 235, 235],
+                lineWidth: 0.2,
+            },
+            headStyles: {
+                fillColor: [245, 245, 247],
+                textColor: [100, 100, 100],
+                fontStyle: 'bold',
+                fontSize: 7.5,
+                cellPadding: { top: 5, bottom: 5, left: 4, right: 4 },
+            },
+            columnStyles: {
+                0: { cellWidth: 90 },                      // Description — widest
+                1: { cellWidth: 20, halign: 'center' },    // Qty — centered
+                2: { cellWidth: 36, halign: 'right' },     // Unit Price — right
+                3: { cellWidth: 36, halign: 'right' },     // Amount — right
+            },
+            margin: { left: MARGIN, right: MARGIN },
+            alternateRowStyles: { fillColor: [250, 250, 252] },
         })
 
-        const finalY = doc.lastAutoTable.finalY || 150
+        const tableEndY = doc.lastAutoTable.finalY || 160
 
-        // --- Totals ---
-        doc.setDrawColor(200)
-        doc.line(14, finalY + 5, 196, finalY + 5)
-
+        // ── 5. TOTALS BLOCK (right-aligned) ──────────────────────
         const totalAmount = inv.amount
-        const advanceAmt = inv.payment_details_json.advance || 0
+        const advanceAmt = inv.payment_details_json?.advance || 0
+        const balance = totalAmount - advanceAmt
 
-        doc.setFont('helvetica', 'bold')
-        doc.text('GRAND TOTAL', 130, finalY + 13)
-        doc.text(`Rs. ${totalAmount.toLocaleString()}`, 170, finalY + 13)
+        let totY = tableEndY + 6
+        const totLabelX = 145
+        const totValueX = RIGHT
+
+        doc.setDrawColor(220, 220, 220)
+        doc.setLineWidth(0.3)
+        doc.line(totLabelX, totY, RIGHT, totY)
+
+        totY += 7
+        // Subtotal row
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8.5)
+        doc.setTextColor(80, 80, 80)
+        doc.text('Subtotal', totLabelX, totY)
+        doc.text(`Rs. ${Number(totalAmount).toLocaleString('en-IN')}`, totValueX, totY, { align: 'right' })
 
         if (advanceAmt > 0) {
-            doc.text('ADVANCE PAYMENT', 130, finalY + 20)
-            doc.text(`Rs. ${advanceAmt.toLocaleString()}`, 170, finalY + 20)
+            totY += 6
+            doc.text('Advance Received', totLabelX, totY)
+            doc.setTextColor(34, 160, 100)    // green for advance
+            doc.text(`- Rs. ${Number(advanceAmt).toLocaleString('en-IN')}`, totValueX, totY, { align: 'right' })
         }
 
-        doc.line(14, finalY + 25, 196, finalY + 25)
+        totY += 5
+        doc.setDrawColor(18, 18, 20)
+        doc.setLineWidth(0.4)
+        doc.line(totLabelX, totY, RIGHT, totY)
+        totY += 7
 
-        // --- Payment Info ---
-        doc.setFontSize(10)
+        // Grand Total / Balance Due
+        doc.setFillColor(18, 18, 20)
+        doc.roundedRect(totLabelX - 2, totY - 5, RIGHT - totLabelX + 4, 10, 1.5, 1.5, 'F')
         doc.setFont('helvetica', 'bold')
-        doc.text('Payment Terms: ', 14, finalY + 35)
+        doc.setFontSize(9)
+        doc.setTextColor(255, 255, 255)
+        doc.text(advanceAmt > 0 ? 'BALANCE DUE' : 'TOTAL DUE', totLabelX + 2, totY + 2)
+        doc.text(
+            `Rs. ${Number(advanceAmt > 0 ? balance : totalAmount).toLocaleString('en-IN')}`,
+            totValueX - 2, totY + 2, { align: 'right' }
+        )
+
+        // ── 6. PAYMENT INFO SECTION ────────────────────────────────
+        const payY = totY + 18
+        doc.setDrawColor(235, 235, 235)
+        doc.setLineWidth(0.3)
+        doc.line(MARGIN, payY - 4, RIGHT, payY - 4)
+
+        // Left: Payment Terms
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7.5)
+        doc.setTextColor(120, 120, 120)
+        doc.text('PAYMENT TERMS', MARGIN, payY)
         doc.setFont('helvetica', 'normal')
-        doc.text(inv.payment_details_json.terms, 45, finalY + 35)
+        doc.setFontSize(8.5)
+        doc.setTextColor(30, 30, 30)
+        const termsText = inv.payment_details_json?.terms || ''
+        doc.text(termsText, MARGIN, payY + 6, { maxWidth: 85 })
+
+        // Right: Payment Details (UPI / PhonePe)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7.5)
+        doc.setTextColor(120, 120, 120)
+        doc.text('PAYMENT DETAILS', 110, payY)
+
+        doc.setFontSize(8.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(30, 30, 30)
+        doc.text('UPI:', 110, payY + 6)
+        doc.setFont('helvetica', 'normal')
+        doc.text(inv.payment_details_json?.upi || '', 122, payY + 6)
 
         doc.setFont('helvetica', 'bold')
-        doc.text('Payment Details:', 14, finalY + 45)
-        doc.text('UPI: ', 14, finalY + 52)
+        doc.text('PhonePe:', 110, payY + 12)
         doc.setFont('helvetica', 'normal')
-        doc.text(inv.payment_details_json.upi, 24, finalY + 52)
+        doc.text(inv.payment_details_json?.phonepe || '', 128, payY + 12)
 
-        doc.setFont('helvetica', 'bold')
-        doc.text('PhonePe:', 14, finalY + 59)
+        // ── 7. NOTE ───────────────────────────────────────────────
+        if (inv.notes) {
+            const noteY = payY + 26
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(7.5)
+            doc.setTextColor(120, 120, 120)
+            doc.text('NOTE', MARGIN, noteY)
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(8.5)
+            doc.setTextColor(60, 60, 60)
+            doc.text(inv.notes, MARGIN, noteY + 6, { maxWidth: PAGE_W - MARGIN * 2 })
+        }
+
+        // ── 8. FOOTER BAR ─────────────────────────────────────────
+        const footerY = 272
+        doc.setFillColor(18, 18, 20)
+        doc.rect(0, footerY, PAGE_W, 25, 'F')
+
         doc.setFont('helvetica', 'normal')
-        doc.text(inv.payment_details_json.phonepe, 32, finalY + 59)
+        doc.setFontSize(7.5)
+        doc.setTextColor(140, 140, 140)
+        doc.text('Thank you for your business!', MARGIN, footerY + 9)
+        doc.text('Second Lens Studio  ·  secondlensstudio@gmail.com  ·  +91 7066498198', MARGIN, footerY + 15)
 
-        // --- Footer Wave graphic & note ---
-        doc.setFillColor(220, 220, 220)
-        // Simple stylized wave polygon at the bottom for branding
-        doc.rect(0, 260, 210, 40, 'F')
-
-        doc.setFont('helvetica', 'bold')
-        doc.text('Payment method: ', 14, 275)
-        doc.setFont('helvetica', 'normal')
-        doc.text('UPI', 46, 275)
-
-        doc.setFont('helvetica', 'bold')
-        doc.text('Note: ', 14, 282)
-        doc.setFont('helvetica', 'normal')
-        doc.text(inv.notes || '', 26, 282)
+        // Page number right side
+        doc.setTextColor(80, 80, 80)
+        doc.text('Page 1', RIGHT, footerY + 12, { align: 'right' })
 
         if (!isPreview) {
             doc.save(`Invoice_${clientName.replace(/\s+/g, '_')}_${format(parseISO(inv.date), 'MMM_yyyy')}.pdf`)
         }
     }
+
 
     const handleGenerate = async () => {
         const clientId = customClient.trim() ? customClient.trim() : selectedClient
@@ -206,6 +345,7 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
         if (items.length === 0 || !items[0].desc) { toast.error('Add at least one item'); return }
 
         setIsSaving(true)
+        const invoiceNumber = generateInvoiceNumber(date, invoices)
         const payload: any = {
             user_id: userId,
             client_id_or_name: clientId,
@@ -217,7 +357,8 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
             notes: notes,
             folder_id: selectedFolderId || null,
             advance_received: advanceReceived,
-            advance_amount: advanceAmountInput
+            advance_amount: advanceAmountInput,
+            invoice_number: editingId ? undefined : invoiceNumber
         }
         if (activeFolderId) payload.folder_id = activeFolderId
 
@@ -243,17 +384,49 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
         setIsSaving(false)
     }
 
-    const handleToggleAdvance = async (id: string, received: boolean) => {
+    // Clicking "Advance Received" sets advance_collected = true
+    // This adds the advance amount to Paid Revenue without marking full invoice as Paid
+    const handleCollectAdvance = async (inv: Invoice) => {
+        const advanceAmt = inv.advance_amount || inv.payment_details_json?.advance || 0
+        if (!advanceAmt) { toast.error('No advance amount set on this invoice'); return }
+
         const { data, error } = await supabase
             .from('invoices')
-            .update({ advance_received: received, advance_amount: received ? 5000 : 0 }) // Default 5000 if quick marked
-            .eq('id', id)
+            .update({ advance_collected: true, advance_received: true })
+            .eq('id', inv.id)
             .select()
             .single()
 
         if (!error && data) {
-            setInvoices(prev => prev.map(inv => inv.id === id ? data : inv))
-            toast.success('Advance status updated')
+            setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, advance_collected: true, advance_received: true } : i))
+            toast.success(`Advance of ₹${advanceAmt.toLocaleString()} recorded in Paid Revenue`)
+        } else {
+            toast.error('Failed to record advance')
+        }
+    }
+
+    // Changing status to Paid adds the remaining balance (total - advance) to Paid Revenue
+    const handleStatusChange = async (inv: Invoice, newStatus: string) => {
+        const { error } = await retryQuery(() =>
+            supabase.from('invoices').update({ status: newStatus }).eq('id', inv.id)
+        )
+        if (!error) {
+            setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: newStatus } : i))
+            if (newStatus === 'Paid') {
+                const advanceAlreadyCounted = inv.advance_collected
+                    ? (inv.advance_amount || inv.payment_details_json?.advance || 0)
+                    : 0
+                const remaining = inv.amount - advanceAlreadyCounted
+                toast.success(
+                    advanceAlreadyCounted > 0
+                        ? `Marked as Paid — remaining ₹${remaining.toLocaleString()} added to revenue`
+                        : `Marked as Paid — ₹${inv.amount.toLocaleString()} added to revenue`
+                )
+            } else {
+                toast.success('Status updated to Sent')
+            }
+        } else {
+            toast.error('Failed to update status')
         }
     }
 
@@ -333,7 +506,29 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                     </Card>
                     <Card className="bg-card">
                         <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Paid Revenue</CardTitle></CardHeader>
-                        <CardContent><p className="text-2xl font-bold text-emerald-400">&#8377;{invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0).toLocaleString()}</p></CardContent>
+                        <CardContent>
+                            <p className="text-2xl font-bold text-emerald-400">&#8377;{
+                                invoices.reduce((s, i) => {
+                                    if (i.status === 'Paid') {
+                                        // Full amount — advance already included
+                                        return s + i.amount
+                                    }
+                                    if (i.advance_collected) {
+                                        // Only advance portion collected so far
+                                        return s + (i.advance_amount || i.payment_details_json?.advance || 0)
+                                    }
+                                    return s
+                                }, 0).toLocaleString()
+                            }</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Pending: &#8377;{
+                                    invoices.filter(i => i.status !== 'Paid').reduce((s, i) => {
+                                        const adv = i.advance_collected ? (i.advance_amount || i.payment_details_json?.advance || 0) : 0
+                                        return s + (i.amount - adv)
+                                    }, 0).toLocaleString()
+                                }
+                            </p>
+                        </CardContent>
                     </Card>
                 </div>
 
@@ -493,7 +688,7 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold">{clientName}</span>
-                                                <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full border">INV-{inv.id.substring(0, 6).toUpperCase()}</span>
+                                                <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full border">{inv.invoice_number || `INV-${inv.id.substring(0, 6).toUpperCase()}`}</span>
                                             </div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-sm text-muted-foreground">{format(parseISO(inv.date), 'MMM d, yyyy')} &bull; &#8377;{inv.amount.toLocaleString()}</span>
@@ -504,18 +699,36 @@ export function InvoiceGenerator({ invoices: initialInvoices, clients, userId, a
                                         </div>
 
                                         <div className="flex items-center gap-3">
-                                            {!inv.advance_received && inv.status !== 'Paid' && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-500 hidden sm:flex"
-                                                    onClick={() => handleToggleAdvance(inv.id, true)}
-                                                >
-                                                    <CheckCircle2 className="w-3 h-3" /> Mark Advance
-                                                </Button>
-                                            )}
-                                            <Select value={inv.status} onValueChange={(val: string) => updateStatus(inv.id, val)}>
-                                                <SelectTrigger className={`h-8 border border-white/10 text-xs font-bold px-2 py-1 rounded-full outline-none w-[100px] ${inv.status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                                            {/* Advance Received button — shows exact advance, disables after clicked */}
+                                            {(() => {
+                                                const advAmt = inv.advance_amount || inv.payment_details_json?.advance || 0
+                                                if (inv.status === 'Paid' || !advAmt) return null
+                                                return (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={!!inv.advance_collected}
+                                                        className={`h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 hidden sm:flex transition-all ${
+                                                            inv.advance_collected
+                                                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500 opacity-60 cursor-not-allowed'
+                                                                : 'border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-500'
+                                                        }`}
+                                                        onClick={() => !inv.advance_collected && handleCollectAdvance(inv)}
+                                                    >
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        {inv.advance_collected
+                                                            ? `Advance ₹${advAmt.toLocaleString()} ✓`
+                                                            : `Advance Received: ₹${advAmt.toLocaleString()}`
+                                                        }
+                                                    </Button>
+                                                )
+                                            })()}
+
+                                            {/* Status dropdown — Sent → Paid triggers balance revenue */}
+                                            <Select value={inv.status} onValueChange={(val: string) => handleStatusChange(inv, val)}>
+                                                <SelectTrigger className={`h-8 border border-white/10 text-xs font-bold px-2 py-1 rounded-full outline-none w-[100px] ${
+                                                    inv.status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                                                }`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-card">
