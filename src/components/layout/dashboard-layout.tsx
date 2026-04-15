@@ -8,10 +8,10 @@ import { ConnectionStatus } from "@/components/ui/connection-status"
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen w-full bg-background text-foreground font-sans overflow-hidden" suppressHydrationWarning>
+            <div className="flex h-screen w-full bg-background text-foreground font-sans overflow-hidden" suppressHydrationWarning>
                 <ConnectionStatus />
                 <AppSidebar />
-                <div className="flex flex-col flex-1 overflow-hidden relative">
+                <div className="flex flex-col flex-1 h-full overflow-hidden relative">
                     {/* ── Premium Topbar ── */}
                     <header className="h-[60px] border-b border-border/60 bg-background/80 backdrop-blur-2xl flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 sticky top-0">
                         {/* Subtle gradient line at top */}
@@ -56,7 +56,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </header>
 
                     {/* ── Main content ── */}
-                    <main className="flex-1 overflow-y-auto overscroll-contain scroll-smooth p-4 sm:p-6 md:p-8 w-full max-w-[1600px] mx-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <main className="flex-1 overflow-y-auto scroll-smooth p-4 sm:p-6 md:p-8 w-full max-w-[1600px] mx-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {children}
                     </main>
                 </div>
